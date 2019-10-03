@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Click Learning</title>
+<style type="text/css">
+</style>
+<script type="text/javascript" src="/scripts/jquery.js"></script>
+<script type="text/javascript">
+	$(function(){
+		var $canvas = $('#GameArea');
+		var canvas = $canvas[0];
+		var ctx = canvas.getContext('2d');
+		ctx.strokeStyle = 'rgba(0,0,0,1.0)';
+		ctx.fillStyle = "rgba(255, 255, 255, 1.0)";
+		
+		var randomCircleRadius = 20;
+		var circleAlpha = 1.0;
+		var lastX = 0;
+		var lastY = 0;
+		
+		var randomConnection = 0;
+		
+		var positionX = 0;
+		var positionY = 0;
+		
+		var touching = false;
+		
+		var neurons = [
+			{
+				fire:function(){
+					console.log(this);
+				},
+				connection:null
+			}
+		];
+		
+		var canvasSensors = [];
+		
+		//animate();
+		
+		$canvas.click(function(event){
+			
+			ctx.clearRect(1,1,canvas.width,canvas.height);
+			
+			var x = event.offsetX;
+			var y = event.offsetY;
+			
+			var randomConnection = parseInt(Math.random() * neurons.length);
+			
+			/*neurons.push({
+				fire:function(){
+					//console.log(this);
+					if(this.connection != null){
+						neurons[this.connection].fire();
+					}
+				},
+				connection:randomConnection});*/
+			
+			neurons[randomConnection].fire();
+		});
+		
+		$canvas.mousedown(function(event){
+			touching = true;
+			lastX = event.offsetX;
+			lastY = event.offsetY;
+			
+			neurons.push({
+					fire:function(){
+						if(this.connection != null){
+							neurons[this.connection].fire();
+						}
+					},
+					connection:0});
+			
+		})
+		
+		$canvas.mouseup(function(){
+			touching = false;
+			
+			neurons.push({
+					fire:function(){
+						if(this.connection != null){
+							neurons[this.connection].fire();
+						}
+					},
+					connection:neurons.length - 1});
+		})
+		
+		$canvas.mousemove(function(event){
+			
+			if(touching){
+				
+				var x = event.offsetX;
+				var y = event.offsetY;
+				
+				
+				canvasSensors[x] = canvasSensors[x] ? canvasSensors[x] : [];
+				
+				var randomcolor = randomColor({
+							RedLower:0,
+							RedUpper:255,
+							GreenLower:0,
+							GreenUpper:255,
+							BlueLower:0,
+							BlueUpper:255
+						});
+				
+				
+				
+				var radius = (Math.abs(x - lastX) + Math.abs(y - lastY)) / 2;
+				
+				
+				
+				lastX = x;
+				lastY = y;
+				
+				//var randomConnection = parseInt(Math.random() * neurons.length);
+				
+				if(!canvasSensors[x][y]){
+					neurons.push({
+						fire:function(){
+							drawCircle(randomcolor,radius,x,y);
+							if(this.connection != null){
+								neurons[this.connection].fire();
+							}
+						},
+						connection:neurons.length - 1});
+					
+					canvasSensors[x][y] = neurons[neurons.length - 1];
+				}
+				
+				canvasSensors[x][y].fire();
+			}
+			
+		});
+		
+		function drawCircle(color,radius,x,y){
+			ctx.beginPath();
+				
+			ctx.fillStyle = "rgba(" + color.r + ", " + color.g + ", " + color.b + ", " + circleAlpha + ")";
+			
+			ctx.arc(x, y, radius, 0, 2 * Math.PI, true);
+			ctx.fill();
+		}
+		
+		function getColorAtPosition(x,y){
+			
+			var sampleWidth = 3;
+			var sampleHeight = 3;
+			
+			var ImageData = ctx.getImageData(x - (sampleWidth / 2),y - (sampleHeight / 2),sampleWidth, sampleHeight);
+			
+			//console.log(ImageData.data.length);
+			
+			var totalPoints = sampleHeight * sampleWidth;
+			
+			var red = 0;
+			var green = 0;
+			var blue = 0;
+			
+			for(var i = 0;i < totalPoints;i++){
+				red = red + ImageData.data[i * 4];
+				green = green + ImageData.data[(i * 4) + 1];
+				blue = blue + ImageData.data[(i * 4) + 2];
+			}
+			
+			red = red / totalPoints;
+			green = green / totalPoints;
+			blue = blue / totalPoints;
+			
+			return {r:parseInt(red),g:parseInt(green),b:parseInt(blue)};
+		}
+		
+		function randomColor(b){
+		
+			var red = parseInt(Math.random() * (b.RedUpper - b.RedLower)) + b.RedLower;
+			var green = parseInt(Math.random() * (b.GreenUpper - b.GreenLower)) + b.GreenLower;
+			var blue = parseInt(Math.random() * (b.BlueUpper - b.BlueLower)) + b.BlueLower;
+			
+			var val = {r:red,
+						g:green,
+						b:blue};
+			
+			return val;
+		}
+		
+		function animate(){
+			webkitRequestAnimationFrame(animate);
+			
+			ctx.clearRect(1,1,canvas.width,canvas.height);
+			
+			//var randomConnection = parseInt(Math.random() * neurons.length);
+			
+			
+			neurons[randomConnection].fire();
+			
+		}
+	});
+</script>
+</head>
+<body>
+	<canvas id="GameArea" width="1000" height="1000"></canvas>
+</body>
+</html>
