@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Noise Picture</title>
+<style type="text/css">
+	
+	canvas{
+		position: absolute;
+		top: 0px;
+		left: 0px;
+	}
+	
+	
+</style>
+<script type="text/javascript" src="/scripts/jquery.js"></script>
+<script type="text/javascript" src="/scripts/jquery-mousewheel.js"></script>
+<script type="text/javascript" src="/scripts/noise.js"></script>
+
+<script type="text/javascript">
+	
+	noise.seed(0.4);
+
+	
+	$(function(){
+		requestAnimationFrame(animate);
+		
+		var $canvas = $('#drawing');
+		var canvas = $canvas[0];
+		var ctx = canvas.getContext('2d');
+		ctx.strokeStyle = 'rgba(255,255,255,1.0)';
+		ctx.fillStyle = "rgba(255, 255, 255, 1.0)";
+		
+		var $ui = $('#ui');
+		var ui = $ui[0];
+		var uictx = ui.getContext('2d');
+		uictx.strokeStyle = 'rgba(0,0,0,1.0)';
+		uictx.fillStyle = "rgba(255, 255, 255, 1.0)"; 
+		
+		//ctx.globalCompositeOperation = 'lighter';
+		
+		var NumberOfPoints = 50;
+		var BoundingSize = 100;
+		var ColorRange = 5;
+
+		var userPoints = new Array();
+
+
+		for(var j = 0;j < NumberOfPoints;j++){
+			var x = parseInt(Math.random() * canvas.width);
+			var y = parseInt(Math.random() * canvas.height);
+			
+			
+			var color = randomColor({
+						RedLower:0,
+						RedUpper:255,
+						GreenLower:0,
+						GreenUpper:255,
+						BlueLower:0,
+						BlueUpper:255
+					});
+
+			userPoints.push(makeUserPoint(color,x,y));
+
+		}
+
+		var randomCircleRadius = 20;
+		var circleAlpha = 1.0;
+		
+		
+		
+		var RectX = 0;
+		var RectY = 0;
+		
+		
+		ctx.fillRect(0, 0, canvas.width, canvas.height);
+		
+		$ui.mousemove(function(event){
+			
+			var x = event.offsetX;
+			var y = event.offsetY;
+			
+			RectX = x;
+			RectY = y;
+			
+			//uictx.strokeRect(x - BoundingSize,y - BoundingSize,x + BoundingSize,y + BoundingSize);
+		});
+		
+		$ui.mousewheel(function(event,delta){
+			if(delta > 0){
+				
+				decreaseBounds();
+				
+				event.preventDefault();
+			}else{
+				
+				increaseBounds();
+				
+				event.preventDefault();
+			}
+		});
+		
+		$ui.click(function(event){
+				
+				var x = event.offsetX;
+				var y = event.offsetY;
+				
+				var sampleColor = getColorAtPosition(x,y);
+				for(var i = 0;i < 10;i++){
+					userPoints.push(makeUserPoint(sampleColor,x + i,y));
+				
+				}
+			
+		});
+		
+		function getColorAtPosition(x,y){
+			
+			var sampleWidth = 3;
+			var sampleHeight = 3;
+			
+			var ImageData = ctx.getImageData(x - (sampleWidth / 2),y - (sampleHeight / 2),sampleWidth, sampleHeight);
+			
+			
+			
+			var totalPoints = sampleHeight * sampleWidth;
+			
+			var red = 0;
+			var green = 0;
+			var blue = 0;
+			
+			for(var i = 0;i < totalPoints;i++){
+				red = red + ImageData.data[i * 4];
+				green = green + ImageData.data[(i * 4) + 1];
+				blue = blue + ImageData.data[(i * 4) + 2];
+			}
+			
+			red = red / totalPoints;
+			green = green / totalPoints;
+			blue = blue / totalPoints;
+			
+			return {r:parseInt(red),g:parseInt(green),b:parseInt(blue)};
+		}
+		
+		function animate(elapsedTime){
+			requestAnimationFrame(animate);
+
+			if(parseInt(elapsedTime) % 500 < 30){
+				userPoints.shift();
+				console.log('removed: ' + elapsedTime + ' length: ' + userPoints.length);
+			}
+
+			// Draw UI elements
+			uictx.clearRect(1,1,ui.width,ui.height);
+			uictx.strokeRect(RectX - BoundingSize,RectY - BoundingSize,BoundingSize * 2,BoundingSize * 2);
+			
+			var sampleColor = getColorAtPosition(RectX,RectY);
+			uictx.fillStyle = "rgba(" + sampleColor.r + ", " + sampleColor.g + ", " + sampleColor.b + ", 1.0)";
+			
+			uictx.fillRect(RectX - 15,RectY - 15,15,15);
+			uictx.strokeRect(RectX - 15,RectY - 15,15,15);
+			
+			for(var i = 0;i < userPoints.length;i++){
+				var point = userPoints[i];
+
+				var newX = point.XPosition + (noise.simplex3(point.XPosition,point.YPosition,elapsedTime) * 15);
+				var newY = point.YPosition + (noise.simplex3(point.YPosition,point.XPosition,elapsedTime) * 15);
+
+				var currentColor = getColorAtPosition(newX,newY);
+
+				var pointColor = randomColor(point);
+
+				var newPointColor = {
+					r:parseInt((pointColor.r + currentColor.r) / 2,10),
+					g:parseInt((pointColor.g + currentColor.g) / 2,10),
+					b:parseInt((pointColor.b + currentColor.b) / 2,10)
+				};
+				
+
+				var distanceCheckValue = mapValue(noise.simplex2(newX,newY),-1,1,10,point.AffectDistance);
+
+				if(distance({x:newX,y:newY},{x:point.OriginalX,y:point.OriginalY}) < distanceCheckValue){
+					
+					point.XPosition = newX;
+					point.YPosition = newY;
+
+					drawPoint(point.XPosition,point.YPosition,newPointColor.r,newPointColor.g,newPointColor.b,circleAlpha);
+				}	
+
+				
+
+			}
+			
+			// Draw random points
+			/*for(var j = 0;j < NumberOfPoints;j++){
+				var x = parseInt(Math.random() * canvas.width);
+				var y = parseInt(Math.random() * canvas.height);
+				
+				
+				
+
+
+				var colorNoise = mapValue(noise.simplex2(x,y),-1,1,0,1);
+				var colorSeedRed = (Math.random() + colorNoise) / 2;
+				var colorSeedGreen = (Math.random() + colorNoise) / 2;
+				var colorSeedBlue = (Math.random() + colorNoise) / 2;
+
+				var newRed = parseInt(mapValue(colorSeedRed,0,1,0,255),10);
+				var newGreen = parseInt(mapValue(colorSeedGreen,0,1,0,255),10);
+				var newBlue = parseInt(mapValue(colorSeedBlue,0,1,0,255),10);
+				
+				
+
+				
+
+				drawPoint(x,y,newRed,newGreen,newBlue,circleAlpha);
+
+			}*/
+			
+			
+		}
+		
+		function drawPoint(x,y,r,g,b,a){
+			ctx.beginPath();
+				
+			ctx.fillStyle = "rgba(" + r + ", " + g + ", " + b + ", " + a + ")";
+			
+			
+			ctx.arc(x, y, 7, 0, 2 * Math.PI, true);
+			ctx.fill();
+
+			uictx.beginPath();
+
+			uictx.fillStyle = "rgba(0, 0, 0, 1)";
+			
+			
+			uictx.arc(x, y, 2, 0, 2 * Math.PI, true);
+			uictx.fill();
+		}
+
+		function randomColor(b){
+		
+			var red = parseInt(Math.random() * (b.RedUpper - b.RedLower)) + b.RedLower;
+			var green = parseInt(Math.random() * (b.GreenUpper - b.GreenLower)) + b.GreenLower;
+			var blue = parseInt(Math.random() * (b.BlueUpper - b.BlueLower)) + b.BlueLower;
+			
+			var val = {r:red,
+						g:green,
+						b:blue};
+			
+			return val;
+		}
+		
+		function makeUserPoint(color,x,y){
+			var red = color.r;
+			var green = color.g;
+			var blue = color.b;
+			
+			var RedLower = 0;
+			var RedUpper = 255;
+			var GreenLower = 0;
+			var GreenUpper = 255;
+			var BlueLower = 0;
+			var BlueUpper = 255;
+			
+			RedLower = Math.max(red - ColorRange,0);
+			RedUpper = Math.min(red + ColorRange,255);
+			
+			GreenLower = Math.max(green - ColorRange,0);
+			GreenUpper = Math.min(green + ColorRange,255);
+			
+			BlueLower = Math.max(blue - ColorRange,0);
+			BlueUpper = Math.min(blue + ColorRange,255);
+			
+			var point = {
+				AffectDistance:BoundingSize,
+				OriginalX:x,
+				OriginalY:y,
+				XPosition:x,
+				YPosition:y,
+				RedLower:RedLower,
+				RedUpper:RedUpper,
+				GreenLower:GreenLower,
+				GreenUpper:GreenUpper,
+				BlueLower:BlueLower,
+				BlueUpper:BlueUpper
+			};
+			
+			return point;
+		}
+		
+		$('#BiggerBounds').click(function(){
+			increaseBounds();
+		});
+		
+		$('#SmallerBounds').click(function(){
+			decreaseBounds();
+		});
+		
+		function increaseBounds(){
+			BoundingSize+=10;
+		}
+		
+		function decreaseBounds(){
+			BoundingSize-=10;
+		}
+		
+		function mapValue(Value,startScale1,endScale1,startScale2,endScale2){
+			var ValueFraction = (Value - startScale1) / (endScale1 - startScale1);
+
+			var NewValue = ValueFraction * (endScale2 - startScale2);
+
+			return NewValue;
+		}
+
+		function distance(Point1,Point2){
+			var dist = Math.sqrt(Math.pow(Point1.x - Point2.x,2) + Math.pow(Point1.y - Point2.y,2))
+			
+			return dist;
+		}
+
+	});
+	
+	
+</script>
+</head>
+
+<body>
+	<canvas id="drawing" width="1000" height="700"></canvas>
+	<canvas id="ui" width="1000" height="700"></canvas>
+	<div style="height:1050px;"></div>
+	<input type="button" value="Bigger" id="BiggerBounds">
+	<input type="button" value="Smaller" id="SmallerBounds">
+</body>
+</html>
