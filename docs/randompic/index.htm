@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Picture Chooser</title>
+<style type="text/css">
+	canvas{
+		width: 1000px;
+		height: 500px;
+	}
+</style>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript">
+	Array.prototype.remove = function(from, to) {
+	  var rest = this.slice((to || from) + 1 || this.length);
+	  this.length = from < 0 ? this.length + from : from;
+	  return this.push.apply(this, rest);
+	};
+	
+	$(function(){
+		
+		var $canvas = $('#drawing');
+		var canvas = $canvas[0];
+		var ctx = canvas.getContext('2d');
+		ctx.strokeStyle = 'rgba(0,0,0,1.0)';
+		ctx.fillStyle = "rgba(255, 255, 255, 1.0)";
+		
+		var $temp = $('#temp');
+		var temp = $temp[0];
+		var tempctx = temp.getContext('2d');
+		
+		tempctx.strokeStyle = 'rgba(0,0,0,1.0)';
+		tempctx.fillStyle = "rgba(255, 255, 255, 1.0)";
+		
+		var PicData = new Array();
+		
+		var NumberOfPics = 4;
+		
+		var minRedValue = 0;
+		var maxRedValue = 255;
+		
+		var minGreenValue = 0;
+		var maxGreenValue = 255;
+		
+		var minBlueValue = 0;
+		var maxBlueValue = 255;
+		
+		var chosenIndex = -1;
+		
+		/*ctx.moveTo(1, 1);
+		ctx.lineTo(1000,250);
+		ctx.lineTo(1,250);
+		ctx.stroke();*/
+		
+		console.log('lines');
+		
+		var PictureWidth = parseInt((canvas.width / NumberOfPics) - 10);
+		
+		for(var i = 0;i<NumberOfPics;i++){
+			PicData[i] = new Object();
+			PicData[i].data = ctx.getImageData(i * PictureWidth,0,PictureWidth,canvas.height);
+			PicData[i].left = i * (PictureWidth + 10);
+			PicData[i].top = 0;
+			PicData[i].width = PictureWidth;
+			PicData[i].height = canvas.height;
+			PicData[i].savedXStart = PictureWidth / 2;
+			PicData[i].savedYStart = canvas.height / 2;
+			PicData[i].savedColor = randomColor();
+		}
+		
+		console.dir(PicData);
+		
+		$canvas.click(function(event){
+			
+			//ctx.clearRect(1,1,canvas.width,canvas.height);
+			
+			var x = event.offsetX;
+			var y = event.offsetY;
+			
+			var index = getPicIndex(x,y,PicData);
+			
+			if(index >= 0){
+				chosenIndex = index;
+			}
+			
+		});
+		
+		function getPicIndex(x,y,PicData){
+			
+			var returnIndex = -1;
+			
+			for(var i = 0;i<PicData.length;i++){
+				if(x >= PicData[i].left && x <= PicData[i].left + PicData[i].width && y >= PicData[i].top && y <= PicData[i].top + PicData[i].height){
+					returnIndex = i;
+				}
+			}
+			
+			return returnIndex;
+		}
+		
+		function choosePicture(){
+			
+			
+			minRedValue = Math.min(minRedValue + 5,PicData[chosenIndex].savedColor.r);
+			maxRedValue = Math.max(maxRedValue - 5,PicData[chosenIndex].savedColor.r);
+			
+			minGreenValue = Math.min(minGreenValue + 5,PicData[chosenIndex].savedColor.g);
+			maxGreenValue = Math.max(maxGreenValue - 5,PicData[chosenIndex].savedColor.g);
+			
+			minBlueValue = Math.min(minBlueValue + 5,PicData[chosenIndex].savedColor.b);
+			maxBlueValue = Math.max(maxBlueValue - 5,PicData[chosenIndex].savedColor.b);
+			
+			
+			for(var i = 0;i<PicData.length;i++){
+				//if(i != chosenIndex){
+					PicData[i].data = ctx.getImageData(PicData[chosenIndex].left,PicData[chosenIndex].top,PicData[chosenIndex].width,PicData[chosenIndex].height);
+					PicData[i].savedColor = PicData[chosenIndex].savedColor;
+					PicData[i].savedXStart = PicData[chosenIndex].savedXStart;
+					PicData[i].savedYStart = PicData[chosenIndex].savedYStart;
+					/*for(var j = 0;j<50;j++){
+						var randint = parseInt(Math.random() * PicData[i].data.data.length);
+						console.log(randint);
+						PicData[i].data.data[randint] = parseInt(Math.random() * 255);
+					}*/
+				//}
+			}
+			
+			
+		}
+		
+		function randomColor(){
+		
+			var red = parseInt(Math.random() * 255);
+			var green = parseInt(Math.random() * 255);
+			var blue = parseInt(Math.random() * 255);
+			
+			var val = {r:red,
+						g:green,
+						b:blue};
+			
+			return val;
+		}
+		
+		function randomColorChange(oldColor){
+			
+			var range = 30;
+			
+			var red = parseInt(Math.random() * ((oldColor.r + range) - (oldColor.r - range))) + (oldColor.r - range);
+			var green = parseInt(Math.random() * ((oldColor.g + range) - (oldColor.g - range))) + (oldColor.g - range);
+			var blue = parseInt(Math.random() * ((oldColor.b + range) - (oldColor.b - range))) + (oldColor.b - range);
+			
+			red = Math.min(parseInt(maxRedValue),Math.max(parseInt(minRedValue),red));
+			green = Math.min(parseInt(maxGreenValue),Math.max(parseInt(minGreenValue),green));
+			blue = Math.min(parseInt(maxBlueValue),Math.max(parseInt(minBlueValue),blue));
+			
+			var val = {r:red,
+						g:green,
+						b:blue};
+			
+			return val;
+		}
+		
+		function animate(){
+			webkitRequestAnimationFrame(animate);
+			
+			
+			if(chosenIndex > -1){
+				choosePicture();
+				chosenIndex = -1;
+			}
+			
+			ctx.clearRect(1,1,canvas.width,canvas.height);
+			tempctx.clearRect(1,1,temp.width,temp.height);
+			
+			
+			
+			for(var i = 0;i<PicData.length;i++){
+				ctx.putImageData(PicData[i].data,PicData[i].left,PicData[i].top);
+				tempctx.putImageData(PicData[i].data,PicData[i].left,PicData[i].top);
+			}
+			
+			
+			
+			/*var xStart = parseInt(Math.random() * canvas.width);
+			var yStart = parseInt(Math.random() * canvas.height);
+			
+			var xEnd = parseInt(Math.random() * canvas.width);
+			var yEnd = parseInt(Math.random() * canvas.height);
+			
+			ctx.moveTo(xStart, yStart);
+			ctx.lineTo(xEnd,yEnd);
+			ctx.stroke();*/
+			
+			//var c = randomColor();
+			
+						
+			//var xStart = parseInt(Math.random() * temp.width);
+			//var yStart = parseInt(Math.random() * temp.height);
+			
+			
+			
+			
+			
+			savedXStart = xEnd;
+			savedYStart = yEnd;
+				
+			for(var j = 0;j<PicData.length;j++){
+				
+							
+				
+				var xEnd = PicData[j].savedXStart + parseInt(Math.random() * 40) - 20;
+				var yEnd = PicData[j].savedYStart + parseInt(Math.random() * 40) - 20;
+				
+				if(xEnd < 0){
+					xEnd = 0;
+				}
+				if(xEnd > canvas.width){
+					xEnd = canvas.width;
+				}
+				
+				if(yEnd < 0){
+					yEnd = 0;
+				}
+				if(yEnd > canvas.height){
+					yEnd = canvas.height;
+				}
+				
+				var c = randomColorChange(PicData[j].savedColor);
+				
+				tempctx.strokeStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',1.0)';
+				
+				PicData[j].savedColor = c;
+				
+				//tempctx.putImageData(PicData[j].data,PicData[j].left,PicData[j].top);
+				
+				tempctx.beginPath();
+				tempctx.moveTo(PicData[j].savedXStart + PicData[j].left, PicData[j].savedYStart);
+				tempctx.lineTo(xEnd + PicData[j].left,yEnd);
+				tempctx.closePath();
+				tempctx.stroke();
+				
+				PicData[j].data = tempctx.getImageData(PicData[j].left,PicData[j].top,PicData[j].width,PicData[j].height);
+				
+				//var randint = parseInt(Math.random() * PicData[i].data.data.length);
+				//console.log(randint);
+				
+				//var randColor = parseInt(Math.random() * 255);
+				
+				//for(var j = 0;j<40;j++){
+				//	PicData[i].data.data[randint + j] = randColor;
+				//}
+				
+				//
+				
+				PicData[j].savedXStart = xEnd;
+				PicData[j].savedYStart = yEnd;
+			}
+			
+			tempctx.clearRect(1,1,temp.width,temp.height);
+			
+			
+		}
+		animate();
+	});
+</script>
+</head>
+
+<body>
+	<canvas id="drawing" width="1000" height="500"></canvas>
+	<canvas id="temp" width="1000" height="500" style="display:none;"></canvas>
+</body>
+</html>
