@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>path tracking simulation</title>
+</head>
+
+<script type="text/javascript" src="/scripts/jquery.js"></script>
+<script type="text/javascript">
+	$(function(){
+		var $canvas = $('#GameArea');
+		var canvas = $canvas[0];
+		var ctx = canvas.getContext('2d');
+		ctx.strokeStyle = 'rgba(0,0,0,1.0)';
+		ctx.fillStyle = "rgba(255, 255, 255, 1.0)";
+		
+		// events with an initial event to start
+
+		/*
+			Events should be stored using an array per millisecond or something so they can be inserted
+			easily at the correct time
+
+			events {
+				1:[],
+				2:[]
+				etc.
+			}
+			
+			Then on each loop run all events in times that have passed
+
+		*/
+
+		events = [new Event(new Particle(50, 50, -10, 9, 1), new Particle(50, 50, 10, 10, 1))];
+
+		
+		function processEvent(event){
+
+		}
+
+
+		function Event(particle1, particle2){
+			this.particle1 = particle1;
+			this.particle2 = particle2;
+
+			return this;
+		}
+
+
+		function Particle(x, y, xSpeed, ySpeed, mass){
+
+			this.x = x;
+			this.y = y;
+			this.xSpeed = xSpeed;
+			this.ySpeed = ySpeed;
+			this.mass = 1;
+
+			return this;
+		}
+		
+		
+		function drawCircle(color,radius,x,y){
+			ctx.beginPath();
+				
+			ctx.fillStyle = "rgba(" + color.r + ", " + color.g + ", " + color.b + ", " + 1 + ")";
+			
+			ctx.arc(x, y, radius, 0, 2 * Math.PI, true);
+			ctx.fill();
+		}
+		
+		function randomColor(b){
+		
+			var red = parseInt(Math.random() * (b.RedUpper - b.RedLower)) + b.RedLower;
+			var green = parseInt(Math.random() * (b.GreenUpper - b.GreenLower)) + b.GreenLower;
+			var blue = parseInt(Math.random() * (b.BlueUpper - b.BlueLower)) + b.BlueLower;
+			
+			var val = {r:red,
+						g:green,
+						b:blue};
+			
+			return val;
+		}
+		
+		function animate(){
+			requestAnimationFrame(animate);
+			
+			ctx.clearRect(1,1,canvas.width,canvas.height);
+			
+			//var randomConnection = parseInt(Math.random() * neurons.length);
+			
+			
+		}
+
+
+		//animate();
+
+	});
+</script>
+
+<body>
+
+	<p>Path Tracking</p>
+
+	<canvas id="GameArea" width="1000" height="1000"></canvas>
+</body>
+</html>
