@@ -27,6 +27,11 @@
 			
 			Then on each loop run all events in times that have passed
 
+
+			A particle can only have one future event so I need a way to cancel
+			the current future event for a particle when an earlier one is created
+
+
 		*/
 
 		events = [new Event(new Particle(50, 50, -10, 9, 1), new Particle(50, 50, 10, 10, 1))];
