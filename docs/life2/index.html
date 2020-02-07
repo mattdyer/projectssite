@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Life 2</title>
+
+	<script type="text/javascript" src="/scripts/jquery.js"></script>
+
+	<script type="text/javascript">
+		$(function(){
+			var $canvas = $('#GameArea');
+			var canvas = $canvas[0];
+			var ctx = canvas.getContext('2d');
+
+			var items = [];
+
+			items.push(new Item());
+
+			function animate(){
+				requestAnimationFrame(animate);
+				
+				ctx.clearRect(1,1,canvas.width,canvas.height);
+				
+				for(item of items){
+					item.animate(ctx);
+					//console.log(item.getPosition());
+				}
+				
+			}
+
+			//animate();
+
+		});
+
+
+		function Item(){
+
+			var x = 0;
+			var y = 0;
+			var radius = 5;
+			var drawer = new Drawer();
+			var color = drawer.randomColor({
+							RedLower:0,
+							RedUpper:255,
+							GreenLower:0,
+							GreenUpper:255,
+							BlueLower:0,
+							BlueUpper:255
+						});
+
+
+			function getPosition(){
+
+				return {x: x,y: y}
+			}
+
+
+			function animate(ctx){
+
+				
+				
+				drawer.drawCircle(ctx, color, radius, x, y);
+			}
+
+
+			this.animate = animate;
+			this.getPosition = getPosition;
+
+			return this;
+		}
+
+
+		function Drawer(){
+
+			function drawCircle(ctx, color,radius,x,y){
+
+				circleAlpha = 1;
+
+				ctx.beginPath();
+					
+				ctx.fillStyle = "rgba(" + color.r + ", " + color.g + ", " + color.b + ", " + circleAlpha + ")";
+				
+				ctx.arc(x, y, radius, 0, 2 * Math.PI, true);
+				ctx.fill();
+			}
+
+
+			function randomColor(b){
+			
+				var red = parseInt(Math.random() * (b.RedUpper - b.RedLower)) + b.RedLower;
+				var green = parseInt(Math.random() * (b.GreenUpper - b.GreenLower)) + b.GreenLower;
+				var blue = parseInt(Math.random() * (b.BlueUpper - b.BlueLower)) + b.BlueLower;
+				
+				var val = {r:red,
+							g:green,
+							b:blue};
+				
+				return val;
+			}
+
+
+			this.drawCircle = drawCircle;
+			this.randomColor = randomColor;
+
+			return this;
+		}
+
+	</script>
+
+</head>
+<body>
+	<p>Second Version of Life Game</p>
+
+	<canvas id="GameArea" width="1000" height="1000"></canvas>
+</body>
+</html>
