@@ -24,6 +24,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [ ] **Battleship** — Place ships on a grid, guess opponent's ship locations.
 - [ ] **Gravity Soccer** — Ball with physics, kick it into the goal past a goalkeeper.
 - [ ] **Particle Physics Toy** — Simulate gravity between objects, users place masses.
+- [ ] **Conway's Game of Life** — Cellular automaton on a grid; start with a pattern and watch it evolve.
 
 ## Art / Visual Tools
 
