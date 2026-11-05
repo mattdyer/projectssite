@@ -10,7 +10,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [ ] **Pong** — Two-player or AI-vs-player paddle-ball game.
 - [ ] **Minesweeper** — Click to reveal cells, avoid mines, number hints on neighbors.
 - [ ] **Tetris** — Falling tetrominoes, rotate/move, clear complete rows.
-- [ ] **2048** — Slide-number puzzle that merges matching tiles.
+- [x] **2048** — Slide-number puzzle that merges matching tiles.
 - [ ] **Flappy Bird** — Tap/click to fly through gaps between pipes.
 - [ ] **Memory Match** — Grid of cards, flip two at a time to find matching pairs.
 - [ ] **Reaction Time** — Measure how fast the user can click when color changes.
