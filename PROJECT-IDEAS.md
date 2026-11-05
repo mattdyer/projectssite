@@ -4,7 +4,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 
 ## Games
 
-- [ ] **Snake** — Classic snake game on a canvas grid, with increasing speed as you eat.
+- [x] **Snake** — Classic snake game on a canvas grid, with increasing speed as you eat.
 - [ ] **Breakout / Arkanoid** — Bouncing ball, paddle, and rows of colored bricks to destroy.
 - [ ] **Space Invaders** — Rows of aliens moving side-to-side, player shoots upward.
 - [ ] **Pong** — Two-player or AI-vs-player paddle-ball game.
