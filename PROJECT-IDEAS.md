@@ -11,7 +11,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [x] **Minesweeper** — Click to reveal cells, avoid mines, number hints on neighbors.
 - [x] **Tetris** — Falling tetrominoes, rotate/move, clear complete rows.
 - [x] **2048** — Slide-number puzzle that merges matching tiles.
-- [ ] **Flappy Bird** — Tap/click to fly through gaps between pipes.
+- [x] **Flappy Bird** — Tap/click to fly through gaps between pipes.
 - [ ] **Memory Match** — Grid of cards, flip two at a time to find matching pairs.
 - [ ] **Reaction Time** — Measure how fast the user can click when color changes.
 - [ ] **Whack-a-Mole** — Random holes pop up, click them before they hide.
