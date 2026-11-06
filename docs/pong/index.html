@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Pong</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #111; overflow: hidden; font-family: 'Courier New', monospace; touch-action: none; }
+  #container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
+  canvas { background: #000; border: 2px solid #444; display: block; }
+  #ui { color: #fff; text-align: center; margin-bottom: 10px; }
+  #score { font-size: 28px; letter-spacing: 12px; margin-bottom: 6px; }
+  #score .left { color: #4af; }
+  #score .right { color: #f55; }
+  #controls { font-size: 13px; color: #aaa; margin-bottom: 4px; }
+  button { background: #333; color: #fff; border: 1px solid #666; padding: 6px 16px; margin: 4px; cursor: pointer; font-family: 'Courier New', monospace; font-size: 13px; border-radius: 4px; }
+  button:hover { background: #555; }
+  button.active { background: #0a0; color: #000; border-color: #0f0; }
+  #msg { color: #ff0; font-size: 14px; min-height: 20px; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div id="container">
+  <div id="ui">
+    <div id="score"><span class="left" id="p1score">0</span> — <span class="right" id="p2score">0</span></div>
+    <div id="controls">
+      <button id="btnAI" class="active" onclick="setAI(true)">vs AI</button>
+      <button id="btn2P" onclick="setAI(false)">2 Player</button>
+      <button onclick="resetGame()">Reset</button>
+      <button onclick="togglePause()">Pause</button>
+    </div>
+    <div id="msg">Click or tap to start</div>
+  </div>
+  <canvas id="c"></canvas>
+</div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+// Responsive sizing
+let W, H, PW, PH, BALL_R, NET_W;
+function resize() {
+  const maxW = Math.min(window.innerWidth - 20, 700);
+  const maxH = Math.min(window.innerHeight - 160, 480);
+  // 3:2 aspect
+  if (maxW / maxH > 1.5) { H = maxH; W = H * 1.5; } else { W = maxW; H = W / 1.5; }
+  canvas.width = W = Math.floor(W);
+  canvas.height = H = Math.floor(H);
+  PW = W * 0.015;
+  PH = H * 0.2;
+  BALL_R = Math.max(4, W * 0.01);
+  NET_W = 2;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+}
+resize();
+window.addEventListener('resize', () => { resize(); if (g) { g.p1.y = H/2-PH/2; g.p2.y = H/2-PH/2; } });
+
+const WIN_SCORE = 7;
+let aiMode = true;
+let paused = false;
+let running = false;
+let g = null;
+
+// Input
+let keys = {};
+window.addEventListener('keydown', e => { keys[e.key] = true; e.preventDefault(); });
+window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+// Touch / mouse
+let touchY = null;
+function getClientY(e) {
+  const r = canvas.getBoundingClientRect();
+  return (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+}
+
+canvas.addEventListener('mousedown', e => { handleClick(e); });
+canvas.addEventListener('mousemove', e => { if (e.buttons) { handleMove(e); } });
+canvas.addEventListener('touchstart', e => { e.preventDefault(); handleMove(e); handleClick(e); }, { passive: false });
+canvas.addEventListener('touchmove', e => { e.preventDefault(); handleMove(e); }, { passive: false });
+
+function handleClick(e) {
+  if (!running || paused) { startGame(); }
+}
+function handleMove(e) {
+  touchY = getClientY(e);
+}
+
+function setAI(val) {
+  aiMode = val;
+  document.getElementById('btnAI').classList.toggle('active', val);
+  document.getElementById('btn2P').classList.toggle('active', !val);
+}
+
+function resetGame() {
+  running = false;
+  paused = false;
+  document.getElementById('msg').textContent = 'Click or tap to start';
+  updateScoreDisplay();
+}
+
+function togglePause() {
+  if (!running) return;
+  paused = !paused;
+  document.getElementById('msg').textContent = paused ? 'Paused' : '';
+}
+
+function startGame() {
+  if (running) { resetGame(); }
+  const s1 = parseInt(document.getElementById('p1score').textContent) || 0;
+  const s2 = parseInt(document.getElementById('p2score').textContent) || 0;
+  if (s1 >= WIN_SCORE || s2 >= WIN_SCORE) { resetGame(); }
+  running = true;
+  paused = false;
+  document.getElementById('msg').textContent = '';
+  if (!g) initGame();
+  else { resetBall(); }
+  requestAnimationFrame(loop);
+}
+
+function initGame() {
+  g = {
+    p1: { x: W * 0.03, y: H/2 - PH/2, w: PW, h: PH, dy: 0 },
+    p2: { x: W * 0.97 - PW, y: H/2 - PH/2, w: PW, h: PH, dy: 0 },
+    ball: { x: W/2, y: H/2, vx: 0, vy: 0 },
+    trail: [],
+    particles: [],
+    hitFlash: 0
+  };
+  resetBall();
+}
+
+function resetBall() {
+  const speed = W * 0.004;
+  const angle = (Math.random() - 0.5) * Math.PI / 3;
+  const dir = Math.random() > 0.5 ? 1 : -1;
+  g.ball = { x: W/2, y: H/2, vx: Math.cos(angle)*speed*dir, vy: Math.sin(angle)*speed, speed: speed };
+  g.trail = [];
+}
+
+function updateScoreDisplay() {
+  document.getElementById('p1score').textContent = g ? g.p1score || 0 : 0;
+  document.getElementById('p2score').textContent = g ? g.p2score || 0 : 0;
+}
+
+function spawnParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const sp = Math.random() * 3 + 1;
+    g.particles.push({ x, y, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp, life: 1, color, size: Math.random()*3+1 });
+  }
+}
+
+function update() {
+  if (!g || paused) return;
+
+  const speed = W * 0.006;
+
+  // Player 1 input (W/S or touch)
+  let p1Target = null;
+  if (keys['w'] || keys['W']) p1Target = -1;
+  if (keys['s'] || keys['S']) p1Target = 1;
+  if (touchY !== null) {
+    const r = canvas.getBoundingClientRect();
+    p1Target = (touchY - r.top - (g.p1.y + PH/2)) * 0.15;
+    p1Target = Math.max(-1, Math.min(1, p1Target));
+  }
+  if (p1Target !== null) {
+    g.p1.y += p1Target * speed;
+  }
+  g.p1.y = Math.max(0, Math.min(H - PH, g.p1.y));
+
+  // Player 2 / AI
+  if (aiMode) {
+    const ballTarget = g.ball.y - PH/2;
+    const diff = ballTarget - g.p2.y;
+    const react = speed * 0.75;
+    if (Math.abs(diff) > 5) g.p2.y += Math.sign(diff) * react;
+  } else {
+    let p2Target = null;
+    if (keys['ArrowUp']) p2Target = -1;
+    if (keys['ArrowDown']) p2Target = 1;
+    if (p2Target !== null) g.p2.y += p2Target * speed;
+    g.p2.y = Math.max(0, Math.min(H - PH, g.p2.y));
+  }
+
+  // Ball movement
+  const b = g.ball;
+  g.trail.push({ x: b.x, y: b.y });
+  if (g.trail.length > 12) g.trail.shift();
+
+  b.x += b.vx;
+  b.y += b.vy;
+
+  // Top/bottom walls
+  if (b.y - BALL_R <= 0) { b.y = BALL_R; b.vy = Math.abs(b.vy); }
+  if (b.y + BALL_R >= H) { b.y = H - BALL_R; b.vy = -Math.abs(b.vy); }
+
+  // Paddle collision
+  function paddleHit(paddle) {
+    if (b.x - BALL_R < paddle.x + paddle.w && b.x + BALL_R > paddle.x &&
+        b.y > paddle.y - BALL_R && b.y < paddle.y + paddle.h + BALL_R) {
+      const rel = (b.y - (paddle.y + PH/2)) / (PH/2);
+      const angle = rel * Math.PI / 3.5;
+      b.speed = Math.min(b.speed + W * 0.0005, W * 0.012);
+      b.vx = Math.cos(angle) * b.speed * (paddle === g.p1 ? 1 : -1);
+      b.vy = Math.sin(angle) * b.speed;
+      g.hitFlash = 0.3;
+      spawnParticles(b.x, b.y, paddle === g.p1 ? '#4af' : '#f55', 8);
+      return true;
+    }
+    return false;
+  }
+  paddleHit(g.p1);
+  paddleHit(g.p2);
+
+  // Scoring
+  if (b.x < -BALL_R * 2) {
+    g.p2score = (g.p2score || 0) + 1;
+    spawnParticles(0, b.y, '#f55', 15);
+    updateScoreDisplay();
+    if (g.p2score >= WIN_SCORE) { endGame('AI' + (aiMode ? '' : ' (Player 2)')); }
+    else resetBall();
+  }
+  if (b.x > W + BALL_R * 2) {
+    g.p1score = (g.p1score || 0) + 1;
+    spawnParticles(W, b.y, '#4af', 15);
+    updateScoreDisplay();
+    if (g.p1score >= WIN_SCORE) { endGame('Player 1'); }
+    else resetBall();
+  }
+
+  // Particles
+  g.particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= 0.03; });
+  g.particles = g.particles.filter(p => p.life > 0);
+
+  if (g.hitFlash > 0) g.hitFlash -= 0.02;
+}
+
+function endGame(winner) {
+  running = false;
+  document.getElementById('msg').textContent = winner + ' wins! Click to play again.';
+}
+
+function draw() {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+
+  // Net
+  ctx.setLineDash([6, 8]);
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = NET_W;
+  ctx.beginPath();
+  ctx.moveTo(W/2, 0);
+  ctx.lineTo(W/2, H);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  if (!g) return;
+
+  // Trail
+  g.trail.forEach((t, i) => {
+    const a = (i / g.trail.length) * 0.4;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, BALL_R * (i/g.trail.length), 0, Math.PI*2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  // Ball
+  ctx.fillStyle = '#fff';
+  ctx.shadowColor = '#fff';
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.arc(g.ball.x, g.ball.y, BALL_R, 0, Math.PI*2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Paddles
+  function drawPaddle(p, col) {
+    ctx.fillStyle = col;
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 8;
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.shadowBlur = 0;
+  }
+  drawPaddle(g.p1, '#4af');
+  drawPaddle(g.p2, '#f55');
+
+  // Particles
+  g.particles.forEach(p => {
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+  });
+  ctx.globalAlpha = 1;
+
+  // Hit flash
+  if (g.hitFlash > 0) {
+    ctx.globalAlpha = g.hitFlash * 0.3;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+  }
+
+  // Win score indicators
+  ctx.fillStyle = '#4af';
+  for (let i = 0; i < (g.p1score || 0); i++) ctx.fillRect(W*0.03 + i*14, 8, 8, 8);
+  ctx.fillStyle = '#f55';
+  for (let i = 0; i < (g.p2score || 0); i++) ctx.fillRect(W*0.97 - i*14 - 8, 8, 8, 8);
+}
+
+function loop() {
+  if (!running) { draw(); return; }
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// Initial draw
+draw();
+updateScoreDisplay();
+</script>
+</body>
+</html>
