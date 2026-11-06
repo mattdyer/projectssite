@@ -8,7 +8,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [x] **Breakout / Arkanoid** — Bouncing ball, paddle, and rows of colored bricks to destroy.
 - [x] **Space Invaders** — Rows of aliens moving side-to-side, player shoots upward.
 - [ ] **Pong** — Two-player or AI-vs-player paddle-ball game.
-- [ ] **Minesweeper** — Click to reveal cells, avoid mines, number hints on neighbors.
+- [x] **Minesweeper** — Click to reveal cells, avoid mines, number hints on neighbors.
 - [ ] **Tetris** — Falling tetrominoes, rotate/move, clear complete rows.
 - [x] **2048** — Slide-number puzzle that merges matching tiles.
 - [ ] **Flappy Bird** — Tap/click to fly through gaps between pipes.
