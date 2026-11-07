@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Reaction Time</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #0f0f1a;
+    color: #e0e0e0;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #game-area {
+    width: 95vw;
+    height: 70vh;
+    max-width: 700px;
+    max-height: 500px;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    position: relative;
+    touch-action: manipulation;
+  }
+
+  #game-area.idle {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 3px solid #333;
+  }
+
+  #game-area.waiting {
+    background: linear-gradient(135deg, #8b0000 0%, #cc2222 100%);
+    border: 3px solid #ff4444;
+    animation: pulse 0.5s ease-in-out infinite alternate;
+  }
+
+  #game-area.go {
+    background: linear-gradient(135deg, #006400 0%, #00cc44 100%);
+    border: 3px solid #44ff66;
+  }
+
+  @keyframes pulse {
+    from { box-shadow: 0 0 20px rgba(255,0,0,0.3); }
+    to   { box-shadow: 0 0 40px rgba(255,0,0,0.6); }
+  }
+
+  #title {
+    font-size: 2.5em;
+    font-weight: 700;
+    margin-bottom: 0.2em;
+    text-align: center;
+  }
+
+  #subtitle {
+    font-size: 1.1em;
+    opacity: 0.7;
+    margin-bottom: 1em;
+    text-align: center;
+  }
+
+  #result {
+    font-size: 4em;
+    font-weight: 800;
+    margin-bottom: 0.1em;
+  }
+
+  #result-unit {
+    font-size: 1.2em;
+    opacity: 0.7;
+    margin-bottom: 0.8em;
+  }
+
+  #best {
+    font-size: 0.95em;
+    opacity: 0.5;
+    text-align: center;
+  }
+
+  #history {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 90vw;
+  }
+
+  .history-dot {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65em;
+    font-weight: 700;
+    background: #2a2a3e;
+    border: 2px solid #444;
+  }
+
+  .history-dot.fast { background: #006400; border-color: #00cc44; color: #fff; }
+  .history-dot.ok   { background: #8b6914; border-color: #cc9900; color: #fff; }
+  .history-dot.slow { background: #640000; border-color: #cc2222; color: #fff; }
+  .history-dot.tl   { background: #1a0033; border-color: #6600aa; color: #ddd; }
+
+  #reset-btn {
+    position: fixed;
+    bottom: 75px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: #aaa;
+    border: 1px solid #555;
+    padding: 8px 24px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  #reset-btn:hover { background: #555; color: #fff; }
+
+  #stats {
+    position: fixed;
+    top: 15px;
+    right: 20px;
+    font-size: 0.8em;
+    opacity: 0.4;
+    text-align: right;
+    line-height: 1.5;
+  }
+
+  .emoji-big { font-size: 3em; margin-bottom: 0.3em; }
+
+  @media (max-width: 500px) {
+    #title { font-size: 1.8em; }
+    #result { font-size: 3em; }
+    #game-area { width: 98vw; height: 65vh; border-radius: 14px; }
+    .history-dot { width: 34px; height: 34px; font-size: 0.55em; }
+  }
+</style>
+</head>
+<body>
+
+<div id="stats"></div>
+
+<div id="game-area" class="idle">
+  <div id="title">Reaction Time</div>
+  <div id="subtitle">Tap anywhere to start</div>
+  <div id="result"></div>
+  <div id="result-unit"></div>
+  <div id="best"></div>
+  <div id="emoji" class="emoji-big" style="display:none"></div>
+</div>
+
+<button id="reset-btn" onclick="resetHistory()">Clear History</button>
+<div id="history"></div>
+
+<script>
+const area      = document.getElementById('game-area');
+const title     = document.getElementById('title');
+const subtitle  = document.getElementById('subtitle');
+const resultEl  = document.getElementById('result');
+const unitEl    = document.getElementById('result-unit');
+const bestEl    = document.getElementById('best');
+const emojiEl   = document.getElementById('emoji');
+const historyEl = document.getElementById('history');
+const statsEl   = document.getElementById('stats');
+
+let state = 'idle'; // idle | waiting | go | result
+let startTime = 0;
+let timeout = null;
+let history = [];
+let attempts = 0;
+let best = null;
+
+// Load best from localStorage
+try { best = parseInt(localStorage.getItem('rt_best')) || null; } catch(e) {}
+
+function updateStats() {
+  if (history.length === 0) { statsEl.textContent = ''; return; }
+  const avg = Math.round(history.reduce((a,b)=>a+b,0)/history.length);
+  statsEl.textContent = `Avg: ${avg} ms`;
+}
+
+function getRating(ms) {
+  if (ms < 200)  return 'fast';
+  if (ms < 300)  return 'ok';
+  if (ms < 500)  return 'slow';
+  return 'tl';
+}
+
+function getEmoji(ms) {
+  if (ms < 150)  return '🚀';
+  if (ms < 200)  return '⚡';
+  if (ms < 250)  return '🔥';
+  if (ms < 300)  return '👍';
+  if (ms < 400)  return '😐';
+  if (ms < 500)  return '😅';
+  return '🐌';
+}
+
+function addHistoryDot(ms) {
+  const dot = document.createElement('div');
+  dot.className = 'history-dot ' + getRating(ms);
+  dot.textContent = ms;
+  dot.title = ms + ' ms';
+  historyEl.prepend(dot);
+  // Keep last 20
+  while (historyEl.children.length > 20) {
+    historyEl.removeChild(historyEl.lastChild);
+  }
+}
+
+function setState(s) {
+  state = s;
+  area.className = s;
+  switch(s) {
+    case 'idle':
+      title.textContent = 'Reaction Time';
+      subtitle.textContent = 'Tap anywhere to start';
+      resultEl.textContent = '';
+      unitEl.textContent = '';
+      bestEl.textContent = best !== null ? 'Best: ' + best + ' ms' : '';
+      emojiEl.style.display = 'none';
+      break;
+    case 'waiting':
+      title.textContent = 'Wait for green...';
+      subtitle.textContent = '';
+      resultEl.textContent = '';
+      unitEl.textContent = '';
+      bestEl.textContent = '';
+      emojiEl.style.display = 'none';
+      break;
+    case 'go':
+      title.textContent = 'TAP NOW!';
+      subtitle.textContent = '';
+      resultEl.textContent = '';
+      unitEl.textContent = '';
+      bestEl.textContent = '';
+      emojiEl.style.display = 'none';
+      break;
+    case 'result':
+      break;
+  }
+}
+
+function showResult(ms) {
+  resultEl.textContent = ms;
+  unitEl.textContent = 'ms';
+  bestEl.textContent = best !== null ? 'Best: ' + best + ' ms' : '';
+  emojiEl.textContent = getEmoji(ms);
+  emojiEl.style.display = 'block';
+  if (best === null || ms < best) {
+    best = ms;
+    try { localStorage.setItem('rt_best', best); } catch(e) {}
+    bestEl.textContent = '🏆 New Best: ' + best + ' ms!';
+  }
+}
+
+area.addEventListener('pointerdown', function(e) {
+  e.preventDefault();
+
+  if (state === 'idle') {
+    // Start waiting
+    setState('waiting');
+    const delay = 1500 + Math.random() * 3500; // 1.5s to 5s
+    timeout = setTimeout(() => {
+      setState('go');
+      startTime = performance.now();
+    }, delay);
+  }
+  else if (state === 'waiting') {
+    // Too early!
+    clearTimeout(timeout);
+    timeout = null;
+    title.textContent = 'Too early! 😬';
+    subtitle.textContent = 'Tap to try again';
+    resultEl.textContent = '';
+    unitEl.textContent = '';
+    bestEl.textContent = '';
+    emojiEl.style.display = 'none';
+    area.className = 'waiting';
+    state = 'idle';
+    setTimeout(() => setState('idle'), 800);
+  }
+  else if (state === 'go') {
+    const ms = Math.round(performance.now() - startTime);
+    attempts++;
+    history.push(ms);
+    showResult(ms);
+    addHistoryDot(ms);
+    updateStats();
+    setState('result');
+  }
+});
+
+function resetHistory() {
+  history = [];
+  attempts = 0;
+  historyEl.innerHTML = '';
+  statsEl.textContent = '';
+  setState('idle');
+}
+
+// Initial state
+setState('idle');
+</script>
+</body>
+</html>
