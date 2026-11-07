@@ -14,7 +14,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [x] **Flappy Bird** — Tap/click to fly through gaps between pipes.
 - [x] **Memory Match** — Grid of cards, flip two at a time to find matching pairs.
 - [x] **Reaction Time** — Measure how fast the user can click when color changes.
-- [ ] **Whack-a-Mole** — Random holes pop up, click them before they hide.
+- [x] **Whack-a-Mole** — Random holes pop up, click them before they hide.
 - [ ] **Doodle Jump** — Procedural platforms, jump higher and higher without falling.
 - [ ] **Simon Says** — Sequence of colors/sounds the user must repeat back.
 - [ ] **Tic-Tac-Toe** — Classic X-O on a 3x3 grid, vs AI or two-player.
