@@ -52,7 +52,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [ ] **Color Palette Generator** — Generate harmonious color palettes from a seed.
 - [ ] **Typing Speed Test** — Type the displayed text as fast as possible, WPM + accuracy.
 - [ ] **Number Guessing Game** — Computer picks a number, user guesses with high/low hints.
-- [ ] **Rock Paper Scissors** — Play vs computer, animated, track score.
+- [x] **Rock Paper Scissors** — Play vs computer, animated, track score.
 - [ ] **Mad Libs Generator** — Prompt for words, assemble a silly story.
 - [ ] **Joke of the Day** — Fetch a random joke from an API and display it.
 - [ ] **Pomodoro Timer** — 25-min work / 5-min break cycle with visual progress.
