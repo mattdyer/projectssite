@@ -16,7 +16,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [x] **Reaction Time** — Measure how fast the user can click when color changes.
 - [x] **Whack-a-Mole** — Random holes pop up, click them before they hide.
 - [x] **Doodle Jump** — Procedural platforms, jump higher and higher without falling.
-- [ ] **Simon Says** — Sequence of colors/sounds the user must repeat back.
+- [x] **Simon Says** — Sequence of colors/sounds the user must repeat back.
 - [ ] **Tic-Tac-Toe** — Classic X-O on a 3x3 grid, vs AI or two-player.
 - [ ] **Connect Four** — Drop discs into columns, get four in a row.
 - [ ] **Word Scramble** — Scramble a word, user unscrambles it against the clock.
