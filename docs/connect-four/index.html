@@ -205,13 +205,45 @@ function calcSize() {
 }
 
 // ── Column hover indicators ──
+let colHoverHovered = false;
+
 function buildColHover() {
   colHover.innerHTML = '';
+  colHoverHovered = false;
+
+  // Track hover entering/leaving the column indicator area
+  colHover.addEventListener('pointerenter', () => { colHoverHovered = true; });
+  colHover.addEventListener('pointerleave', () => {
+    colHoverHovered = false;
+    hoverCol = -1;
+    colHover.querySelectorAll('.col-indicator').forEach(el => el.style.background = '');
+  });
+  colHover.addEventListener('pointermove', e => {
+    const rect = colHover.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const col = Math.floor(x / (rect.width / COLS));
+    if (col >= 0 && col < COLS && col !== hoverCol) {
+      hoverCol = col;
+      colHover.querySelectorAll('.col-indicator').forEach((el, i) => {
+        el.style.background = i === col ? 'rgba(255,255,255,0.15)' : '';
+      });
+    }
+  });
+
+  // Delegate click/pointerdown to the container for reliability
+  colHover.addEventListener('pointerdown', e => {
+    const indicator = e.target.closest('.col-indicator');
+    if (!indicator) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const col = Array.from(colHover.children).indexOf(indicator);
+    dropPiece(col);
+  });
+
   for (let c = 0; c < COLS; c++) {
     const d = document.createElement('div');
     d.className = 'col-indicator';
     d.innerHTML = '<span class="arrow">▼</span>';
-    d.addEventListener('pointerdown', e => { e.preventDefault(); dropPiece(c); });
     colHover.appendChild(d);
   }
   colHover.style.width = boardPx + 'px';
@@ -646,8 +678,10 @@ canvas.addEventListener('pointermove', e => {
 });
 
 canvas.addEventListener('pointerleave', () => {
-  hoverCol = -1;
-  colHover.querySelectorAll('.col-indicator').forEach(el => el.style.background = '');
+  if (!colHoverHovered) {
+    hoverCol = -1;
+    colHover.querySelectorAll('.col-indicator').forEach(el => el.style.background = '');
+  }
 });
 
 // Keyboard
