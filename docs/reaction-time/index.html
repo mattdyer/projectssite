@@ -312,6 +312,10 @@ area.addEventListener('pointerdown', function(e) {
     updateStats();
     setState('result');
   }
+  else if (state === 'result') {
+    // Start next round
+    setState('idle');
+  }
 });
 
 function resetHistory() {
