@@ -18,7 +18,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [x] **Doodle Jump** — Procedural platforms, jump higher and higher without falling.
 - [x] **Simon Says** — Sequence of colors/sounds the user must repeat back.
 - [x] **Tic-Tac-Toe** — Classic X-O on a 3x3 grid, vs AI or two-player.
-- [ ] **Connect Four** — Drop discs into columns, get four in a row.
+- [x] **Connect Four** — Drop discs into columns, get four in a row, with AI opponent.
 - [ ] **Word Scramble** — Scramble a word, user unscrambles it against the clock.
 - [ ] **Hangman** — Guess letters to reveal a hidden word.
 - [ ] **Battleship** — Place ships on a grid, guess opponent's ship locations.

@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Connect Four</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    color: #fff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  h1 {
+    margin-top: 16px;
+    font-size: clamp(1.6rem, 5vw, 2.4rem);
+    text-shadow: 0 2px 10px rgba(255,100,100,0.4);
+    letter-spacing: 2px;
+  }
+
+  .scoreboard {
+    display: flex;
+    gap: 24px;
+    margin: 12px 0;
+    font-size: clamp(0.9rem, 3vw, 1.2rem);
+    font-weight: bold;
+  }
+  .scoreboard .red { color: #ff4d4d; }
+  .scoreboard .yellow { color: #ffd700; }
+
+  #status {
+    margin: 8px 0;
+    font-size: clamp(1rem, 3.5vw, 1.4rem);
+    min-height: 1.6em;
+    text-align: center;
+  }
+
+  .board-wrapper {
+    position: relative;
+    margin: 8px 0 16px;
+  }
+
+  /* Column hover indicators */
+  .column-hover {
+    position: absolute;
+    top: -8px;
+    display: flex;
+    width: 100%;
+    height: 24px;
+    z-index: 5;
+  }
+  .column-hover .col-indicator {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-radius: 8px 8px 0 0;
+  }
+  .column-hover .col-indicator:hover {
+    background: rgba(255,255,255,0.15);
+  }
+  .column-hover .col-indicator .arrow {
+    font-size: 18px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    color: rgba(255,255,255,0.7);
+  }
+  .column-hover .col-indicator:hover .arrow { opacity: 1; }
+
+  canvas {
+    display: block;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+
+  .controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+
+  button {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    font-size: clamp(0.85rem, 2.5vw, 1rem);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    letter-spacing: 1px;
+    transition: transform 0.1s, box-shadow 0.2s;
+    box-shadow: 0 4px 12px rgba(102,126,234,0.3);
+  }
+  button:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(102,126,234,0.5); }
+  button:active { transform: translateY(1px); }
+
+  .mode-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .mode-toggle button {
+    background: linear-gradient(135deg, #434343, #000000);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    opacity: 0.6;
+  }
+  .mode-toggle button.active {
+    opacity: 1;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    box-shadow: 0 4px 12px rgba(102,126,234,0.5);
+  }
+
+  .footer {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 12px;
+  }
+
+  /* Win animation */
+  @keyframes winPulse {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.5); }
+  }
+</style>
+</head>
+<body>
+
+<h1>🔴 CONNECT FOUR 🔵</h1>
+
+<div class="mode-toggle">
+  <button id="btnAI" class="active" onclick="setMode('ai')">vs AI</button>
+  <button id="btn2P" onclick="setMode('2p')">2 Players</button>
+</div>
+
+<div class="scoreboard">
+  <span class="red">🔴 Red: <span id="scoreRed">0</span></span>
+  <span class="yellow">🟡 Yellow: <span id="scoreYellow">0</span></span>
+</div>
+
+<div id="status">Your turn — drop a red piece!</div>
+
+<div class="board-wrapper">
+  <div class="column-hover" id="colHover"></div>
+  <canvas id="board"></canvas>
+</div>
+
+<div class="controls">
+  <button onclick="newGame()">New Game</button>
+  <button onclick="undoMove()">Undo</button>
+  <button onclick="resetScores()">Reset Scores</button>
+</div>
+
+<p class="footer">Click a column or tap to drop pieces</p>
+
+<script>
+// ── Constants ──
+const ROWS = 6, COLS = 7;
+const EMPTY = 0, RED = 1, YELLOW = 2;
+
+// ── State ──
+let grid = [];
+let animating = [];       // {col, player, y: 0→1, onComplete}
+let gameOver = false;
+let currentTurn = RED;
+let mode = 'ai';          // 'ai' or '2p'
+let scores = { [RED]: 0, [YELLOW]: 0 };
+let moveHistory = [];
+let cellSize, boardPx, topPad, leftPad;
+let winCells = [];
+let winAnimFrame = 0;
+let hoverCol = -1;
+
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+const colHover = document.getElementById('colHover');
+
+// ── Sizing ──
+function calcSize() {
+  const maxW = Math.min(window.innerWidth - 24, 500);
+  const maxH = Math.min(window.innerHeight - 260, 420);
+  const sizeByW = Math.floor(maxW / COLS);
+  const sizeByH = Math.floor(maxH / ROWS);
+  cellSize = Math.min(sizeByW, sizeByH, 64);
+  boardPx = cellSize * COLS;
+  topPad = cellSize;  // one row gap above board for column hover
+  canvas.width = boardPx;
+  canvas.height = boardPx + topPad;
+  canvas.style.width = boardPx + 'px';
+  canvas.style.height = (boardPx + topPad) + 'px';
+}
+
+// ── Column hover indicators ──
+function buildColHover() {
+  colHover.innerHTML = '';
+  for (let c = 0; c < COLS; c++) {
+    const d = document.createElement('div');
+    d.className = 'col-indicator';
+    d.innerHTML = '<span class="arrow">▼</span>';
+    d.addEventListener('pointerdown', e => { e.preventDefault(); dropPiece(c); });
+    colHover.appendChild(d);
+  }
+  colHover.style.width = boardPx + 'px';
+}
+
+// ── Game logic ──
+function initGrid() {
+  grid = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
+  animating = [];
+  gameOver = false;
+  winCells = [];
+  moveHistory = [];
+}
+
+function newRow() {
+  initGrid();
+  currentTurn = RED;
+  calcSize();
+  buildColHover();
+  draw();
+  setStatus('Your turn — drop a red piece!');
+}
+
+function newRowGame() {
+  newRow();
+}
+
+function getBottomEmpty(row, col) {
+  for (let r = ROWS - 1; r >= 0; r--) {
+    if (grid[r][col] === EMPTY) return r;
+  }
+  return -1;
+}
+
+function canDrop(col) {
+  return grid[0][col] === EMPTY;
+}
+
+function placePiece(col, player) {
+  const row = getBottomEmpty(ROWS - 1, col);
+  if (row < 0) return false;
+  grid[row][col] = player;
+  moveHistory.push({ row, col, player });
+  // Start drop animation
+  animating.push({ col, player, y: 0, targetRow: row, speed: 0.08 + Math.random() * 0.02 });
+  return true;
+}
+
+function checkWin(player) {
+  const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r][c] !== player) continue;
+      for (const [dr, dc] of dirs) {
+        const cells = [[r, c]];
+        let ok = true;
+        for (let i = 1; i < 4; i++) {
+          const nr = r + dr * i, nc = c + dc * i;
+          if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS || grid[nr][nc] !== player) { ok = false; break; }
+          cells.push([nr, nc]);
+        }
+        if (ok) return cells;
+      }
+    }
+  }
+  return null;
+}
+
+function isDraw() {
+  return grid[0].every(c => c !== EMPTY);
+}
+
+function setStatus(msg) {
+  document.getElementById('status').textContent = msg;
+}
+
+// ── AI (Minimax with alpha-beta) ──
+function scoreCenter(col, player) {
+  let score = 0;
+  const centerCol = Math.floor(COLS / 2);
+  score += Math.max(0, 3 - Math.abs(col - centerCol));
+  return score;
+}
+
+function evaluateWindow(window, player) {
+  const opp = player === RED ? YELLOW : RED;
+  let score = 0;
+  const pCount = window.filter(c => c === player).length;
+  const oCount = window.filter(c => c === opp).length;
+  const eCount = window.filter(c => c === EMPTY).length;
+  if (pCount === 4) score += 100;
+  else if (pCount === 3 && eCount === 1) score += 5;
+  else if (pCount === 2 && eCount === 2) score += 2;
+  if (oCount === 3 && eCount === 1) score -= 4;
+  return score;
+}
+
+function scorePosition(player) {
+  let score = 0;
+  // Center
+  score += scoreCenter(Math.floor(COLS / 2), player);
+  // Rows
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c <= COLS - 4; c++) {
+      const w = [grid[r][c], grid[r][c+1], grid[r][c+2], grid[r][c+3]];
+      score += evaluateWindow(w, player);
+    }
+  }
+  // Cols
+  for (let c = 0; c < COLS; c++) {
+    for (let r = 0; r <= ROWS - 4; r++) {
+      const w = [grid[r][c], grid[r+1][c], grid[r+2][c], grid[r+3][c]];
+      score += evaluateWindow(w, player);
+    }
+  }
+  // Diagonals
+  for (let r = 0; r <= ROWS - 4; r++) {
+    for (let c = 0; c <= COLS - 4; c++) {
+      const w = [grid[r][c], grid[r+1][c+1], grid[r+2][c+2], grid[r+3][c+3]];
+      score += evaluateWindow(w, player);
+    }
+    for (let r = 0; r <= ROWS - 4; r++) {
+      for (let c = 3; c < COLS; c++) {
+        const w = [grid[r][c], grid[r+1][c-1], grid[r+2][c-2], grid[r+3][c-3]];
+        score += evaluateWindow(w, player);
+      }
+    }
+  }
+  return score;
+}
+
+function getValidCols() {
+  const cols = [];
+  for (let c = 0; c < COLS; c++) if (canDrop(c)) cols.push(c);
+  return cols;
+}
+
+function minimax(g, depth, alpha, beta, maximizing) {
+  const valid = [];
+  for (let c = 0; c < COLS; c++) if (g[0][c] === EMPTY) valid.push(c);
+
+  // Check terminal
+  for (let c = 0; c < COLS; c++) {
+    for (let r = ROWS - 1; r >= 0; r--) {
+      if (g[r][c] === EMPTY) {
+        g[r][c] = YELLOW;
+        if (checkWin(YELLOW)) { g[r][c] = EMPTY; return { score: 100000 + depth, col: c }; }
+        g[r][c] = EMPTY;
+        break;
+      }
+    }
+  }
+  for (let c = 0; c < COLS; c++) {
+    for (let r = ROWS - 1; r >= 0; r--) {
+      if (g[r][c] === EMPTY) {
+        g[r][c] = RED;
+        if (checkWin(RED)) { g[r][c] = EMPTY; return { score: -100000 - depth, col: c }; }
+        g[r][c] = EMPTY;
+        break;
+      }
+    }
+  }
+  if (valid.length === 0 || depth === 0) {
+    return { score: scorePosition(YELLOW), col: valid[Math.floor(Math.random() * valid.length)] || 3 };
+  }
+
+  if (maximizing) {
+    let best = { score: -Infinity, col: -1 };
+    for (const c of valid) {
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (g[r][c] === EMPTY) { g[r][c] = YELLOW; break; }
+      }
+      const result = minimax(g, depth - 1, alpha, beta, false);
+      for (let r = 0; r < ROWS; r++) { if (g[r][c] === YELLOW) { g[r][c] = EMPTY; break; } }
+      if (result.score > best.score) best = { score: result.score, col: c };
+      alpha = Math.max(alpha, best.score);
+      if (alpha >= beta) break;
+    }
+    return best;
+  } else {
+    let best = { score: Infinity, col: -1 };
+    for (const c of valid) {
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (g[r][c] === EMPTY) { g[r][c] = RED; break; }
+      }
+      const result = minimax(g, depth - 1, alpha, beta, true);
+      for (let r = 0; r < ROWS; r++) { if (g[r][c] === RED) { g[r][c] = EMPTY; break; } }
+      if (result.score < best.score) best = { score: result.score, col: c };
+      beta = Math.min(beta, best.score);
+      if (alpha >= beta) break;
+    }
+    return best;
+  }
+}
+
+function aiMove() {
+  if (gameOver || currentTurn !== YELLOW) return;
+  const result = minimax(grid.map(r => [...r]), 5, -Infinity, Infinity, true);
+  setTimeout(() => {
+    if (!gameOver && canDrop(result.col)) {
+      doDrop(result.col, YELLOW);
+    }
+  }, 300);
+}
+
+// ── Interaction ──
+function doDrop(col, player) {
+  if (!canDrop(col)) return;
+  if (gameOver) return;
+  placePiece(col, player);
+  currentTurn = currentTurn === RED ? YELLOW : RED;
+}
+
+function dropPiece(col) {
+  if (gameOver) return;
+  if (animating.length > 0) return; // wait for animation
+  if (mode === 'ai' && currentTurn === YELLOW) return;
+  if (col < 0 || col >= COLS) return;
+  doDrop(col, RED);
+  draw();
+  const win = checkWin(RED);
+  if (win) { endGame(RED, win); return; }
+  if (isDraw()) { endGame(null); return; }
+  if (mode === 'ai') aiMove();
+  else { setStatus('Yellow\'s turn'); }
+}
+
+function endGame(winner, cells) {
+  gameOver = true;
+  winCells = cells || [];
+  if (winner) {
+    scores[winner]++;
+    document.getElementById('scoreRed').textContent = scores[RED];
+    document.getElementById('scoreYellow').textContent = scores[YELLOW];
+    setStatus(winner === RED ? '🔴 Red wins!' : '🟡 Yellow wins!');
+  } else {
+    setStatus('🤝 It\'s a draw!');
+  }
+  draw();
+}
+
+function undoMove() {
+  if (gameOver || moveHistory.length === 0 || animating.length > 0) return;
+  // Undo 2 moves (AI + player) or 1 in 2p
+  const count = mode === 'ai' ? 2 : 1;
+  for (let i = 0; i < count && moveHistory.length > 0; i++) {
+    const last = moveHistory.pop();
+    grid[last.row][last.col] = EMPTY;
+    animating = animating.filter(a => !(a.col === last.col && a.player === last.player && a.targetRow === last.row));
+  }
+  // Restore turn
+  if (mode === 'ai') {
+    // AI moved last if odd history, player last if even
+    if (moveHistory.length % 2 === 0 && moveHistory.length > 0) {
+      currentTurn = YELLOW;
+    } else {
+      currentTurn = RED;
+    }
+  } else {
+    currentTurn = currentTurn === RED ? YELLOW : RED;
+  }
+  draw();
+  setStatus(currentTurn === RED ? 'Red\'s turn' : 'Yellow\'s turn');
+}
+
+function resetScores() {
+  scores[RED] = 0;
+  scores[YELLOW] = 0;
+  document.getElementById('scoreRed').textContent = 0;
+  document.getElementById('scoreYellow').textContent = 0;
+  newRow();
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btnAI').className = m === 'ai' ? 'active' : '';
+  document.getElementById('btn2P').className = m === '2p' ? 'active' : '';
+  newRow();
+}
+
+// ── Drawing ──
+function getCellPos(r, c) {
+  return {
+    x: leftPad + c * cellSize + cellSize / 2,
+    y: topPad + r * cellSize + cellSize / 2,
+    r: cellSize * 0.4
+  };
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Background
+  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  grad.addColorStop(0, '#1a1a6e');
+  grad.addColorStop(1, '#0d0d3a');
+  ctx.fillStyle = grad;
+  roundRect(ctx, 0, 0, boardPx, boardPx + topPad, 12);
+  ctx.fill();
+
+  // Grid holes
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const p = getCellPos(r, c);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = '#0d0d3a';
+      ctx.fill();
+      ctx.strokeStyle = '#2a2a8e';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+
+  // Win highlight
+  if (winCells.length > 0) {
+    winAnimFrame++;
+    const pulse = Math.sin(winAnimFrame * 0.08) * 0.3 + 0.7;
+    ctx.save();
+    ctx.shadowColor = '#fff';
+    ctx.shadowBlur = 20 * pulse;
+    for (const [wr, wc] of winCells) {
+      const p = getCellPos(wr, wc);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r + 4, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.3 * pulse) + ')';
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Draw pieces (static)
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r][c] !== EMPTY) {
+        drawPiece(getCellPos(r, c), grid[r][c], 1);
+      }
+    }
+  }
+
+  // Draw animating pieces
+  for (const a of animating) {
+    const yOff = (1 - a.y) * cellSize * ROWS;
+    const targetP = getCellPos(a.targetRow, a.col);
+    const curY = targetP.y - yOff;
+    const ap = { x: targetP.x, y: curY, r: targetP.r };
+    drawPiece(ap, a.player, 1);
+  }
+}
+
+function drawPiece(pos, player, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const grad = ctx.createRadialGradient(pos.x - pos.r * 0.3, pos.y - pos.r * 0.3, pos.r * 0.1, pos.x, pos.y, pos.r);
+  if (player === RED) {
+    grad.addColorStop(0, '#ff8080');
+    grad.addColorStop(1, '#cc0000');
+  } else {
+    grad.addColorStop(0, '#ffff80');
+    grad.addColorStop(1, '#ccaa00');
+  }
+  ctx.beginPath();
+  ctx.arc(pos.x, pos.y, pos.r, 0, Math.PI * 2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // Shine
+  ctx.beginPath();
+  ctx.arc(pos.x - pos.r * 0.25, pos.y - pos.r * 0.25, pos.r * 0.2, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.fill();
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// ── Animation loop ──
+function animate() {
+  let changed = false;
+  for (const a of animating) {
+    a.y += a.speed;
+    if (a.y >= 1) {
+      a.y = 1;
+      changed = true;
+    }
+  }
+  // Remove completed
+  animating = animating.filter(a => a.y < 1);
+  if (animating.length > 0 || winCells.length > 0 || changed) {
+    draw();
+  }
+  requestAnimationFrame(animate);
+}
+
+// ── Input ──
+function getColFromPointer(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const x = (e.clientX - rect.left) * scaleX;
+  return Math.floor(x / cellSize);
+}
+
+canvas.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  const col = getColFromPointer(e);
+  dropPiece(col);
+});
+
+canvas.addEventListener('pointermove', e => {
+  const col = getColFromPointer(e);
+  if (col !== hoverCol) {
+    hoverCol = col;
+    // Flash column
+    colHover.querySelectorAll('.col-indicator').forEach((el, i) => {
+      el.style.background = i === col ? 'rgba(255,255,255,0.15)' : '';
+    });
+  }
+});
+
+canvas.addEventListener('pointerleave', () => {
+  hoverCol = -1;
+  colHover.querySelectorAll('.col-indicator').forEach(el => el.style.background = '');
+});
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.key >= '1' && e.key <= '7') {
+    dropPiece(parseInt(e.key) - 1);
+  } else if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
+    undoMove();
+  }
+});
+
+// ── Init ──
+window.addEventListener('resize', () => { calcSize(); buildColHover(); draw(); });
+newRow();
+animate();
+</script>
+</body>
+</html>
