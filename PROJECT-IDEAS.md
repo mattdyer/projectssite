@@ -20,7 +20,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [x] **Tic-Tac-Toe** — Classic X-O on a 3x3 grid, vs AI or two-player.
 - [x] **Connect Four** — Drop discs into columns, get four in a row, with AI opponent.
 - [ ] **Word Scramble** — Scramble a word, user unscrambles it against the clock.
-- [ ] **Hangman** — Guess letters to reveal a hidden word.
+- [x] **Hangman** — Guess letters to reveal a hidden word.
 - [ ] **Battleship** — Place ships on a grid, guess opponent's ship locations.
 - [ ] **Gravity Soccer** — Ball with physics, kick it into the goal past a goalkeeper.
 - [ ] **Particle Physics Toy** — Simulate gravity between objects, users place masses.
