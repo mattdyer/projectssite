@@ -23,7 +23,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [x] **Hangman** — Guess letters to reveal a hidden word.
 - [x] **Battleship** — Place ships on a grid, guess opponent's ship locations.
 - [x] **Gravity Soccer** — Ball with physics, kick it into the goal past a goalkeeper.
-- [ ] **Particle Physics Toy** — Simulate gravity between objects, users place masses.
+- [x] **Particle Physics Toy** — Simulate gravity between objects, users place masses.
 - [x] **Conway's Game of Life** — Cellular automaton on a grid; start with a pattern and watch it evolve.
 
 ## Art / Visual Tools

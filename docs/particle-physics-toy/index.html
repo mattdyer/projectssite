@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Particle Physics Toy</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0a0a1a; color: #e2e8f0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: flex; flex-direction: column; align-items: center;
+  min-height: 100vh; overflow: hidden; touch-action: none;
+  -webkit-user-select: none; user-select: none;
+}
+#header {
+  display: flex; align-items: center; justify-content: space-between;
+  width: min(95vw, 600px); padding: 8px 0; flex-wrap: wrap; gap: 6px;
+}
+#header h1 { font-size: 1.1rem; color: #818cf8; letter-spacing: 1px; }
+#info { font-size: 0.8rem; color: #64748b; }
+#field-wrap {
+  position: relative; width: min(95vw, 600px);
+  aspect-ratio: 1/1; max-height: 65vh;
+  border-radius: 12px; overflow: hidden;
+  box-shadow: 0 0 40px rgba(129, 140, 248, 0.15);
+  background: #050510;
+}
+canvas { display: block; width: 100%; height: 100%; }
+#controls {
+  display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; justify-content: center;
+}
+button {
+  background: #1e1b4b; color: #a5b4fc; border: 1px solid #312e81;
+  padding: 8px 16px; border-radius: 8px; font-weight: 600;
+  font-size: 0.85rem; cursor: pointer; transition: all 0.15s;
+}
+button:hover { background: #312e81; }
+button:active { transform: scale(0.95); }
+button.active { background: #4f46e5; color: #fff; border-color: #4f46e5; }
+#stats {
+  margin-top: 8px; font-size: 0.75rem; color: #475569;
+  display: flex; gap: 16px;
+}
+#instructions {
+  color: #475569; font-size: 0.75rem; text-align: center;
+  margin-top: 4px; max-width: min(95vw, 600px);
+}
+#mass-slider-wrap {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.8rem; color: #94a3b8;
+}
+#mass-slider {
+  width: 80px; accent-color: #818cf8;
+}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>🌌 Particle Physics Toy</h1>
+  <span id="info">Tap to place • Drag to fling</span>
+</div>
+
+<div id="field-wrap">
+  <canvas id="field"></canvas>
+</div>
+
+<div id="controls">
+  <button id="pause-btn" class="active">⏸ Pause</button>
+  <button id="clear-btn">🗑 Clear</button>
+  <button id="star-btn">⭐ Star System</button>
+  <button id="binary-btn">🌙 Binary Star</button>
+  <button id="random-btn">🎲 Random</button>
+  <div id="mass-slider-wrap">
+    <label>Size:</label>
+    <input type="range" id="mass-slider" min="1" max="20" value="5">
+  </div>
+</div>
+
+<div id="stats">
+  <span>Objects: <span id="count">0</span></span>
+  <span>FPS: <span id="fps">0</span></span>
+</div>
+<div id="instructions">Place massive objects and watch them pull each other with gravity. Trails show paths. Larger = stronger pull.</div>
+
+<script>
+const canvas = document.getElementById('field');
+const ctx = canvas.getContext('2d');
+const countEl = document.getElementById('count');
+const fpsEl = document.getElementById('fps');
+const pauseBtn = document.getElementById('pause-btn');
+const clearBtn = document.getElementById('clear-btn');
+const starBtn = document.getElementById('star-btn');
+const binaryBtn = document.getElementById('binary-btn');
+const randomBtn = document.getElementById('random-btn');
+const massSlider = document.getElementById('mass-slider');
+
+let W, H, scale;
+let paused = false;
+let particles = [];
+let trails = [];
+let dragging = false;
+let dragStart = null;
+let currentMass = 5;
+let animId;
+let lastTime = performance.now();
+let frameCount = 0;
+let fpsTime = 0;
+
+const G = 0.8; // Gravitational constant (scaled for fun)
+const SOFTENING = 15; // Prevents singularities
+const TRAIL_MAX = 80;
+
+// Color palettes for different masses
+function getMassColor(mass) {
+  const colors = [
+    '#a5b4fc', '#818cf8', '#6366f1', '#4f46e5',
+    '#4338ca', '#3730a3', '#312e81', '#8b5cf6',
+    '#7c3aed', '#6d28d9', '#5b21b6', '#a78bfa',
+    '#c084fc', '#d946ef', '#e879f9', '#f472b6',
+    '#fb923c', '#f59e0b', '#fbbf24', '#fde68a'
+  ];
+  return colors[(mass - 1) % colors.length];
+}
+
+function resize() {
+  const wrap = document.getElementById('field-wrap');
+  const rect = wrap.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  W = canvas.width; H = canvas.height;
+  scale = W / 600;
+  draw();
+}
+
+function spawnParticles() {
+  // Keep existing
+}
+
+function init() {
+  particles = [];
+  trails = [];
+  countEl.textContent = '0';
+}
+
+function addParticle(x, y, vx, vy, mass) {
+  particles.push({ x, y, vx: vx || 0, vy: vy || 0, mass });
+  trails.push([]);
+  countEl.textContent = particles.length;
+}
+
+function clearAll() {
+  particles = [];
+  trails = [];
+  countEl.textContent = '0';
+}
+
+// Physics
+function updatePhysics() {
+  const dt = 0.5; // Time step
+
+  // Calculate gravitational forces
+  for (let i = 0; i < particles.length; i++) {
+    let fx = 0, fy = 0;
+    for (let j = 0; j < particles.length; j++) {
+      if (i === j) continue;
+      const dx = particles[j].x - particles[i].x;
+      const dy = particles[j].y - particles[i].y;
+      const distSq = dx * dx + dy * dy + SOFTENING * SOFTENING;
+      const dist = Math.sqrt(distSq);
+      const force = (G * particles[i].mass * particles[j].mass) / distSq;
+      fx += force * (dx / dist) * dt;
+      fy += force * (dy / dist) * dt;
+    }
+    particles[i].vx += fx;
+    particles[i].vy += fy;
+  }
+
+  // Update positions
+  for (let i = 0; i < particles.length; i++) {
+    particles[i].x += particles[i].vx * dt;
+    particles[i].y += particles[i].vy * dt;
+
+    // Bounce off walls (with damping)
+    const margin = particles[i].mass * 3;
+    if (particles[i].x < margin) { particles[i].x = margin; particles[i].vx *= -0.5; }
+    if (particles[i].x > W - margin) { particles[i].x = W - margin; particles[i].vx *= -0.5; }
+    if (particles[i].y < margin) { particles[i].y = margin; particles[i].vy *= -0.5; }
+    if (particles[i].y > H - margin) { particles[i].y = H - margin; particles[i].vy *= -0.5; }
+
+    // Trail
+    if (Math.abs(particles[i].vx) + Math.abs(particles[i].vy) > 0.1) {
+      trails[i].push({ x: particles[i].x, y: particles[i].y });
+      if (trails[i].length > TRAIL_MAX) trails[i].shift();
+    }
+  }
+
+  // Collision / merging (optional - when two particles get very close, merge them)
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[j].x - particles[i].x;
+      const dy = particles[j].y - particles[i].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const minDist = (particles[i].mass + particles[j].mass) * 4;
+      if (dist < minDist) {
+        // Merge into larger one
+        const newMass = particles[i].mass + particles[j].mass;
+        const totalMomentum = {
+          x: particles[i].vx * particles[i].mass + particles[j].vx * particles[j].mass,
+          y: particles[i].vy * particles[i].mass + particles[j].vy * particles[j].mass
+        };
+        const center = {
+          x: (particles[i].x * particles[i].mass + particles[j].x * particles[j].mass) / newMass,
+          y: (particles[i].y * particles[i].mass + particles[j].y * particles[j].mass) / newMass
+        };
+        particles[i].x = center.x;
+        particles[i].y = center.y;
+        particles[i].vx = totalMomentum.x / newMass;
+        particles[i].vy = totalMomentum.y / newMass;
+        particles[i].mass = newMass;
+        particles.splice(j, 1);
+        trails.splice(j, 1);
+        j--;
+        countEl.textContent = particles.length;
+      }
+    }
+  }
+}
+
+// Drawing
+function drawBackground() {
+  // Deep space background with subtle stars
+  ctx.fillStyle = '#050510';
+  ctx.fillRect(0, 0, W, H);
+
+  // Static stars
+  if (!drawBackground.stars) {
+    drawBackground.stars = [];
+    for (let i = 0; i < 200; i++) {
+      drawBackground.stars.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: Math.random() * 1.5,
+        a: 0.2 + Math.random() * 0.5
+      });
+    }
+  }
+  for (const s of drawBackground.stars) {
+    ctx.globalAlpha = s.a;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawTrails() {
+  for (let i = 0; i < particles.length; i++) {
+    if (trails[i].length < 2) continue;
+    const color = getMassColor(particles[i].mass);
+    for (let j = 1; j < trails[i].length; j++) {
+      const alpha = (j / trails[i].length) * 0.6;
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = Math.max(1, particles[i].mass * 0.3) * scale;
+      ctx.beginPath();
+      ctx.moveTo(trails[i][j - 1].x, trails[i][j - 1].y);
+      ctx.lineTo(trails[i][j].x, trails[i][j].y);
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawParticles() {
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i];
+    const r = p.mass * 2.5 * scale;
+    const color = getMassColor(p.mass);
+
+    // Glow
+    const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 3);
+    glow.addColorStop(0, color + '40');
+    glow.addColorStop(1, 'transparent');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r * 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Core
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.beginPath();
+    ctx.arc(p.x - r * 0.25, p.y - r * 0.25, r * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Mass label
+    ctx.fillStyle = '#fff';
+    ctx.font = `${Math.max(8, r * 0.6)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(p.mass, p.x, p.y);
+  }
+}
+
+function drawAimLine() {
+  if (!dragging || !dragStart) return;
+  const rect = canvas.getBoundingClientRect();
+  // Use stored drag info
+  ctx.setLineDash([6 * scale, 4 * scale]);
+  ctx.strokeStyle = 'rgba(165, 180, 252, 0.6)';
+  ctx.lineWidth = 2 * scale;
+  ctx.beginPath();
+  ctx.moveTo(dragStart.x, dragStart.y);
+  // Calculate end from current mouse position
+  // We need current mouse pos - let me store it
+  if (dragEnd) {
+    ctx.lineTo(dragEnd.x, dragEnd.y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Arrow head
+  const dx = dragEnd.x - dragStart.x;
+  const dy = dragEnd.y - dragStart.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist > 10) {
+    const nx = dx / dist, ny = dy / dist;
+    const ax = dragEnd.x, ay = dragEnd.y;
+    const aSize = 10 * scale;
+    ctx.fillStyle = 'rgba(165, 180, 252, 0.8)';
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax - nx * aSize + ny * aSize * 0.5, ay - ny * aSize - nx * aSize * 0.5);
+    ctx.lineTo(ax - nx * aSize - ny * aSize * 0.5, ay - ny * aSize + nx * aSize * 0.5);
+    ctx.fill();
+  }
+
+  // Show velocity
+  const vel = (dist / (20 * scale)).toFixed(1);
+  ctx.fillStyle = '#a5b4fc';
+  ctx.font = `${10 * scale}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText(`v = ${vel}`, dragStart.x, dragStart.y - 20 * scale);
+}
+
+function draw() {
+  drawBackground();
+  drawTrails();
+  drawParticles();
+  drawAimLine();
+}
+
+let dragEnd = null;
+
+function gameLoop(time) {
+  // FPS counter
+  frameCount++;
+  if (time - fpsTime > 500) {
+    fpsEl.textContent = Math.round(frameCount / ((time - fpsTime) / 1000));
+    frameCount = 0;
+    fpsTime = time;
+  }
+
+  if (!paused) {
+    updatePhysics();
+  }
+  draw();
+  animId = requestAnimationFrame(gameLoop);
+}
+
+// Input
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const touch = e.touches ? e.touches[0] : e;
+  return {
+    x: (touch.clientX - rect.left) * (canvas.width / rect.width),
+    y: (touch.clientY - rect.top) * (canvas.height / rect.height)
+  };
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  const pos = getPos(e);
+  dragging = true;
+  dragStart = { x: pos.x, y: pos.y };
+  dragEnd = pos;
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  e.preventDefault();
+  if (!dragging) return;
+  dragEnd = getPos(e);
+});
+
+canvas.addEventListener('pointerup', (e) => {
+  e.preventDefault();
+  if (!dragging || !dragStart) return;
+  dragging = false;
+
+  const dx = dragEnd.x - dragStart.x;
+  const dy = dragEnd.y - dragStart.y;
+  const dist = Math.hypot(dx, dy);
+
+  // Velocity is proportional to drag distance, reversed (fling away from drag)
+  const vx = dx * 0.05;
+  const vy = dy * 0.05;
+
+  addParticle(dragStart.x, dragStart.y, vx, vy, currentMass);
+  dragStart = null;
+  dragEnd = null;
+});
+
+canvas.addEventListener('pointerleave', () => {
+  dragging = false;
+  dragStart = null;
+  dragEnd = null;
+});
+
+pauseBtn.addEventListener('click', () => {
+  paused = !paused;
+  pauseBtn.textContent = paused ? '▶ Play' : '⏸ Pause';
+  pauseBtn.classList.toggle('active', paused);
+});
+
+clearBtn.addEventListener('click', () => {
+  clearAll();
+  drawBackground.stars = null;
+});
+
+massSlider.addEventListener('input', () => {
+  currentMass = parseInt(massSlider.value);
+});
+
+// Presets
+starBtn.addEventListener('click', () => {
+  clearAll();
+  const cx = W * 0.5, cy = H * 0.5;
+  addParticle(cx, cy, 0, 0, 20); // Star
+  for (let i = 0; i < 5; i++) {
+    const angle = (i / 5) * Math.PI * 2;
+    const r = (80 + i * 30) * scale;
+    const speed = Math.sqrt(G * 20 / r) * scale * 0.8;
+    addParticle(
+      cx + Math.cos(angle) * r, cy + Math.sin(angle) * r,
+      -Math.sin(angle) * speed, Math.cos(angle) * speed,
+      2 + Math.floor(Math.random() * 3)
+    );
+  }
+});
+
+binaryBtn.addEventListener('click', () => {
+  clearAll();
+  const cx = W * 0.5, cy = H * 0.5;
+  const sep = 80 * scale;
+  const speed = Math.sqrt(G * 10 / (2 * sep)) * scale * 0.9;
+  addParticle(cx - sep, cy, 0, speed, 10);
+  addParticle(cx + sep, cy, 0, -speed, 10);
+  addParticle(cx, cy - sep * 3, -speed * 0.5, 0, 3);
+});
+
+randomBtn.addEventListener('click', () => {
+  clearAll();
+  const count = 8 + Math.floor(Math.random() * 8);
+  for (let i = 0; i < count; i++) {
+    const m = 1 + Math.floor(Math.random() * 8);
+    const r = m * 2.5 * scale;
+    addParticle(
+      (r + Math.random() * (W - 2 * r)),
+      (r + Math.random() * (H - 2 * r)),
+      (Math.random() - 0.5) * 4 * scale,
+      (Math.random() - 0.5) * 4 * scale,
+      m
+    );
+  }
+});
+
+window.addEventListener('resize', resize);
+resize();
+init();
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
