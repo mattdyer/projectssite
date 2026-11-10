@@ -234,17 +234,20 @@ function buildColHover() {
     const d = document.createElement('div');
     d.className = 'col-indicator';
     d.innerHTML = '<span class="arrow">▼</span>';
-    d.addEventListener('click', e => {
-      e.preventDefault();
-      e.stopPropagation();
-      dropPiece(c);
-    });
-    d.addEventListener('pointerdown', e => {
-      e.preventDefault();
-    });
     colHover.appendChild(d);
   }
   colHover.style.width = boardPx + 'px';
+
+  // Use pointerup for reliable click handling on column indicators
+  colHover.addEventListener('pointerup', e => {
+    const indicator = e.target.closest('.col-indicator');
+    if (indicator) {
+      const indicators = colHover.querySelectorAll('.col-indicator');
+      const col = Array.from(indicators).indexOf(indicator);
+      if (col >= 0 && col < COLS) dropPiece(col);
+    }
+  });
+  colHover.style.pointerEvents = 'auto';
 }
 
 // ── Game logic ──
