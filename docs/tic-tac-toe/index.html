@@ -394,7 +394,16 @@ function minimax(b, depth, isMax) {
   }
 }
 
-// Touch support: tap-highlight removed via CSS; no preventDefault needed
+// Touch support: explicit touchend listeners for reliable mobile tap-to-click
+document.addEventListener('DOMContentLoaded', function() {
+  cells.forEach(function(cell, idx) {
+    cell.addEventListener('touchend', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleClick(idx);
+    });
+  });
+});
 </script>
 
 </body>
