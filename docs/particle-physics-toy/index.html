@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Particle Physics Toy</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a1a; font-family: 'Segoe UI', system-ui, sans-serif; color: #ccc; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #ui { position: absolute; top: 0; left: 0; right: 0; padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: rgba(10,10,26,0.85); backdrop-filter: blur(6px); z-index: 10; }
+  #ui label { font-size: 13px; display: flex; align-items: center; gap: 5px; }
+  #ui input[type=range] { width: 90px; accent-color: #6af; }
+  #ui button { background: #222845; color: #aac; border: 1px solid #334; border-radius: 5px; padding: 5px 12px; font-size: 13px; cursor: pointer; transition: background .15s; }
+  #ui button:hover { background: #333a60; }
+  #ui button.active { background: #445; color: #fff; border-color: #6af; }
+  #info { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 12px; opacity: 0.5; pointer-events: none; }
+  #count { position: absolute; top: 50px; right: 14px; font-size: 12px; opacity: 0.4; }
+  @media (max-width: 600px) {
+    #ui { padding: 8px 8px; gap: 5px; }
+    #ui label { font-size: 11px; }
+    #ui input[type=range] { width: 60px; }
+    #ui button { padding: 4px 8px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+<div id="ui">
+  <label>Gravity <input type="range" id="gSlider" min="1" max="200" value="50"> <span id="gVal">50</span></label>
+  <label>Time <input type="range" id="tSlider" min="1" max="10" value="3"> <span id="tVal">3</span></label>
+  <button id="pauseBtn">Pause</button>
+  <button id="clearBtn">Clear</button>
+  <button id="presetSun">Sun</button>
+  <button id="presetBinary">Binary</button>
+  <button id="presetRandom">Random N</button>
+  <button id="trailBtn" class="active">Trails</button>
+</div>
+<div id="count"></div>
+<canvas id="c"></canvas>
+<div id="info">Click/tap to place masses • Right-click to place heavy mass • Scroll to resize before placing</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+const particles = [];
+const G_CONST = 800;
+let gravityScale = 50;
+let timeScale = 3;
+let paused = false;
+let showTrails = true;
+let placeMass = 20;
+let lastTime = 0;
+
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resize);
+resize();
+
+class Particle {
+  constructor(x, y, mass, vx=0, vy=0) {
+    this.x = x; this.y = y;
+    this.mass = mass;
+    this.vx = vx; this.vy = vy;
+    this.radius = Math.pow(mass, 0.45) * 1.2;
+    this.trail = [];
+    this.maxTrail = 120;
+    const hue = (Math.atan2(this.mass, 1) * 60 + 200) % 360;
+    this.color = `hsl(${hue}, 80%, 65%)`;
+    this.glowColor = `hsl(${hue}, 90%, 50%)`;
+  }
+  update(dt) {
+    this.trail.push({x: this.x, y: this.y});
+    if (this.trail.length > this.maxTrail) this.trail.shift();
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    // Wrap
+    if (this.x < -50) this.x = W + 50;
+    if (this.x > W + 50) this.x = -50;
+    if (this.y < -50) this.y = H + 50;
+    if (this.y > H + 50) this.y = -50;
+  }
+  draw() {
+    // Trail
+    if (showTrails && this.trail.length > 1) {
+      ctx.beginPath();
+      ctx.moveTo(this.trail[0].x, this.trail[0].y);
+      for (let i = 1; i < this.trail.length; i++) {
+        ctx.lineTo(this.trail[i].x, this.trail[i].y);
+      }
+      ctx.strokeStyle = this.color.replace('65%)', '30%)').replace('hsl', 'hsla');
+      ctx.lineWidth = Math.max(1, this.radius * 0.3);
+      ctx.stroke();
+    }
+    // Glow
+    const glow = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius * 3);
+    glow.addColorStop(0, this.glowColor.replace('50%)', '30%)').replace('hsl', 'hsla'));
+    glow.addColorStop(1, 'transparent');
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius * 3, 0, Math.PI * 2);
+    ctx.fillStyle = glow;
+    ctx.fill();
+    // Core
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+}
+
+function computeForces() {
+  const g = gravityScale * G_CONST * 0.001;
+  for (let i = 0; i < particles.length; i++) {
+    let fx = 0, fy = 0;
+    for (let j = 0; j < particles.length; j++) {
+      if (i === j) continue;
+      const dx = particles[j].x - particles[i].x;
+      const dy = particles[j].y - particles[i].y;
+      const distSq = dx * dx + dy * dy;
+      const dist = Math.sqrt(distSq);
+      if (dist < particles[i].radius + particles[j].radius) continue;
+      const force = g * particles[i].mass * particles[j].mass / (distSq + 200);
+      fx += force * dx / dist;
+      fy += force * dy / dist;
+    }
+    particles[i].vx += fx / particles[i].mass * 0.016;
+    particles[i].vy += fy / particles[i].mass * 0.016;
+    // Damping
+    particles[i].vx *= 0.9995;
+    particles[i].vy *= 0.9995;
+  }
+}
+
+// Collision / merge
+function handleCollisions() {
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[j].x - particles[i].x;
+      const dy = particles[j].y - particles[i].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const minDist = particles[i].radius + particles[j].radius;
+      if (dist < minDist * 0.5) {
+        // Merge j into i
+        const totalMass = particles[i].mass + particles[j].mass;
+        particles[i].vx = (particles[i].vx * particles[i].mass + particles[j].vx * particles[j].mass) / totalMass;
+        particles[i].vy = (particles[i].vy * particles[i].mass + particles[j].vy * particles[j].mass) / totalMass;
+        particles[i].mass = totalMass;
+        particles[i].radius = Math.pow(totalMass, 0.45) * 1.2;
+        const hue = (Math.atan2(totalMass, 1) * 60 + 200) % 360;
+        particles[i].color = `hsl(${hue}, 80%, 65%)`;
+        particles[i].glowColor = `hsl(${hue}, 90%, 50%)`;
+        particles.splice(j, 1);
+        j--;
+      }
+    }
+  }
+}
+
+function drawBackground() {
+  ctx.fillStyle = '#0a0a1a';
+  ctx.fillRect(0, 0, W, H);
+  // Subtle grid
+  ctx.strokeStyle = 'rgba(100,120,200,0.06)';
+  ctx.lineWidth = 1;
+  const step = 60;
+  for (let x = 0; x < W; x += step) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += step) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+}
+
+function loop(timestamp) {
+  if (!lastTime) lastTime = timestamp;
+  let dt = (timestamp - lastTime) / 1000;
+  lastTime = timestamp;
+  dt = Math.min(dt, 0.05);
+
+  if (!paused) {
+    const subSteps = 4;
+    const subDt = dt * timeScale / subSteps;
+    for (let s = 0; s < subSteps; s++) {
+      computeForces();
+      for (const p of particles) p.update(subDt);
+      handleCollisions();
+    }
+  }
+
+  drawBackground();
+  for (const p of particles) p.draw();
+
+  // Draw velocity vectors for selected particle
+  if (hoveredParticle) {
+    ctx.beginPath();
+    ctx.moveTo(hoveredParticle.x, hoveredParticle.y);
+    ctx.lineTo(hoveredParticle.x + hoveredParticle.vx * 30, hoveredParticle.y + hoveredParticle.vy * 30);
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  document.getElementById('count').textContent = particles.length + ' particles';
+  requestAnimationFrame(loop);
+}
+
+// Input handling
+let hoveredParticle = null;
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  if (e.touches) {
+    return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+  }
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+
+function addParticle(x, y, mass) {
+  // Give small random initial velocity
+  const vx = (Math.random() - 0.5) * 20;
+  const vy = (Math.random() - 0.5) * 20;
+  particles.push(new Particle(x, y, mass, vx, vy));
+}
+
+canvas.addEventListener('mousedown', (e) => {
+  e.preventDefault();
+  const pos = getPos(e);
+  const mass = e.button === 2 ? placeMass * 10 : placeMass;
+  addParticle(pos.x, pos.y, mass);
+});
+
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const pos = getPos(e);
+  addParticle(pos.x, pos.y, placeMass);
+}, { passive: false });
+
+canvas.addEventListener('mousemove', (e) => {
+  const pos = getPos(e);
+  hoveredParticle = null;
+  for (const p of particles) {
+    const dx = pos.x - p.x;
+    const dy = pos.y - p.y;
+    if (Math.sqrt(dx*dx + dy*dy) < p.radius + 5) {
+      hoveredParticle = p;
+      break;
+    }
+  }
+});
+
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  placeMass = Math.max(5, Math.min(500, placeMass - e.deltaY * 0.1));
+}, { passive: false });
+
+// UI controls
+const gSlider = document.getElementById('gSlider');
+const tSlider = document.getElementById('tSlider');
+gSlider.addEventListener('input', () => {
+  gravityScale = +gSlider.value;
+  document.getElementById('gVal').textContent = gravityScale;
+});
+tSlider.addEventListener('input', () => {
+  timeScale = +tSlider.value;
+  document.getElementById('tVal').textContent = timeScale;
+});
+
+document.getElementById('pauseBtn').addEventListener('click', function() {
+  paused = !paused;
+  this.textContent = paused ? 'Play' : 'Pause';
+  this.classList.toggle('active', paused);
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => { particles.length = 0; });
+
+document.getElementById('trailBtn').addEventListener('click', function() {
+  showTrails = !showTrails;
+  this.classList.toggle('active', showTrails);
+});
+
+function presetSun() {
+  particles.length = 0;
+  const cx = W / 2, cy = H / 2;
+  particles.push(new Particle(cx, cy, 800, 0, 0));
+  // Add orbiting planets
+  for (let i = 0; i < 5; i++) {
+    const angle = (i / 5) * Math.PI * 2;
+    const r = 80 + i * 55;
+    const px = cx + Math.cos(angle) * r;
+    const py = cy + Math.sin(angle) * r;
+    // Orbital velocity
+    const speed = Math.sqrt(G_CONST * 800 * 0.001 / r);
+    particles.push(new Particle(px, py, 10 + Math.random() * 15, -Math.sin(angle) * speed, Math.cos(angle) * speed));
+  }
+}
+
+function presetBinary() {
+  particles.length = 0;
+  const cx = W / 2, cy = H / 2;
+  const sep = 60;
+  particles.push(new Particle(cx - sep, cy, 200, 0, -40));
+  particles.push(new Particle(cx + sep, cy, 200, 0, 40));
+}
+
+function presetRandom() {
+  particles.length = 0;
+  const n = 8 + Math.floor(Math.random() * 12);
+  for (let i = 0; i < n; i++) {
+    const x = 60 + Math.random() * (W - 120);
+    const y = 80 + Math.random() * (H - 160);
+    const mass = 20 + Math.random() * 120;
+    particles.push(new Particle(x, y, mass));
+  }
+}
+
+document.getElementById('presetSun').addEventListener('click', presetSun);
+document.getElementById('presetBinary').addEventListener('click', presetBinary);
+document.getElementById('presetRandom').addEventListener('click', presetRandom);
+
+// Start
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
