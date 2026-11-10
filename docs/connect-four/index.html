@@ -230,20 +230,19 @@ function buildColHover() {
     }
   });
 
-  // Delegate click/pointerdown to the container for reliability
-  colHover.addEventListener('pointerdown', e => {
-    const indicator = e.target.closest('.col-indicator');
-    if (!indicator) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const col = Array.from(colHover.children).indexOf(indicator);
-    dropPiece(col);
-  });
-
   for (let c = 0; c < COLS; c++) {
     const d = document.createElement('div');
     d.className = 'col-indicator';
     d.innerHTML = '<span class="arrow">▼</span>';
+    d.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropPiece(c);
+    });
+    d.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
     colHover.appendChild(d);
   }
   colHover.style.width = boardPx + 'px';
