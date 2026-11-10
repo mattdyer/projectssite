@@ -394,10 +394,7 @@ function minimax(b, depth, isMax) {
   }
 }
 
-// Touch support: prevent double-tap zoom
-document.addEventListener('touchend', e => {
-  if (e.target.closest('.cell')) e.preventDefault();
-}, { passive: false });
+// Touch support: tap-highlight removed via CSS; no preventDefault needed
 </script>
 
 </body>
