@@ -250,12 +250,15 @@ const statusEl = document.getElementById('status');
 
 // --- Event Listeners ---
 
-// Board cell clicks (event delegation on the board)
-document.getElementById('board').addEventListener('click', function(e) {
-  const cell = e.target.closest('.cell');
-  if (!cell) return;
-  const idx = parseInt(cell.getAttribute('data-idx'), 10);
-  handleClick(idx);
+// Board cell clicks (direct listeners on each cell for reliability)
+cells.forEach(function(cell) {
+  var idx = parseInt(cell.getAttribute('data-idx'), 10);
+  cell.addEventListener('click', function() {
+    handleClick(idx);
+  });
+  cell.addEventListener('pointerdown', function(e) {
+    handleClick(idx);
+  });
 });
 
 // Mode toggle buttons
