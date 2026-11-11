@@ -37,7 +37,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [ ] **Rotoscope** — Upload an image, trace over it with draggable lines/curves.
 - [ ] **Maze Generator** — Auto-generate a maze, user can solve it by navigating.
 - [ ] **Chaos Game** — Fractal points drawn by random vertex selection rules.
-- [ ] **Spirograph** — Draw spirograph patterns by adjusting gear parameters.
+- [x] **Spirograph** — Draw spirograph patterns by adjusting gear parameters.
 - [ ] **Music Visualizer** — Canvas visualizes microphone input as bars, circles, or waves.
 - [ ] **Kaleidoscope** — Mirror the mouse cursor in real time to create kaleidoscopic patterns.
 - [ ] **Gravity Drawing** — Draw strokes that fall with simulated gravity.

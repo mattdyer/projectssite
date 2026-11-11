@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Spirograph</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0a0a1a;
+  color: #e0e0e0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
+  touch-action: none;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+#canvas-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 0;
+}
+canvas {
+  background: #0d0d2b;
+  border-radius: 8px;
+  box-shadow: 0 0 30px rgba(100, 100, 255, 0.15);
+  max-width: 100%;
+  max-height: 100%;
+}
+#controls {
+  background: linear-gradient(to top, #12122a 60%, #12122a00);
+  padding: 10px 16px 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 14px;
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
+  z-index: 10;
+}
+.ctrl-group { display: flex; flex-direction: column; gap: 2px; }
+.ctrl-group label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+  color: #8888aa; display: flex; justify-content: space-between;
+}
+.ctrl-group label span.val { color: #aaaaff; font-weight: bold; }
+input[type=range] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+  background: #1a1a3a; border-radius: 3px; outline: none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
+  background: #6666ff; border-radius: 50%; cursor: pointer;
+  box-shadow: 0 0 6px #6666ff88;
+}
+input[type=range]::-moz-range-thumb {
+  width: 18px; height: 18px; background: #6666ff; border: none;
+  border-radius: 50%; cursor: pointer;
+}
+.color-row {
+  grid-column: 1 / -1; display: flex; gap: 10px; align-items: center;
+  flex-wrap: wrap;
+}
+.color-pick {
+  width: 32px; height: 32px; border: 2px solid #333; border-radius: 50%;
+  cursor: pointer; padding: 0; background: none;
+}
+.btn-row {
+  grid-column: 1 / -1; display: flex; gap: 8px; justify-content: center;
+}
+button {
+  padding: 8px 20px; border: none; border-radius: 6px;
+  font-size: 14px; font-weight: bold; cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+button:active { transform: scale(0.95); }
+#btnDraw { background: #22aa44; color: #fff; box-shadow: 0 2px 8px #22aa4455; }
+#btnDraw.paused { background: #ddaa22; box-shadow: 0 2px 8px #ddaa2255; }
+#btnClear { background: #aa2244; color: #fff; box-shadow: 0 2px 8px #aa224455; }
+#btnSave { background: #2266aa; color: #fff; box-shadow: 0 2px 8px #2266aa55; }
+#title {
+  text-align: center; padding: 6px 0 2px;
+  font-size: 16px; font-weight: bold; letter-spacing: 2px;
+  background: linear-gradient(90deg, #6666ff, #ff66aa, #66aaff);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+@media (max-width: 400px) {
+  #controls { grid-template-columns: 1fr 1fr; gap: 4px 8px; padding: 8px 10px 10px; }
+  button { padding: 7px 14px; font-size: 12px; }
+  input[type=range] { height: 4px; }
+  input[type=range]::-webkit-slider-thumb { width: 14px; height: 14px; }
+}
+</style>
+</head>
+<body>
+<div id="title">✦ SPIROGRAPH ✦</div>
+<div id="canvas-wrap"><canvas id="c"></canvas></div>
+<div id="controls">
+  <div class="ctrl-group">
+    <label>Outer Radius (R) <span class="val" id="vR">150</span></label>
+    <input type="range" id="sR" min="20" max="300" value="150" step="1">
+  </div>
+  <div class="ctrl-group">
+    <label>Inner Radius (r) <span class="val" id="vr">80</span></label>
+    <input type="range" id="sr" min="5" max="200" value="80" step="1">
+  </div>
+  <div class="ctrl-group">
+    <label>Pen Distance (d) <span class="val" id="vd">50</span></label>
+    <input type="range" id="sd" min="1" max="200" value="50" step="1">
+  </div>
+  <div class="ctrl-group">
+    <label>Speed <span class="val" id="vspd">3</span></label>
+    <input type="range" id="sspd" min="1" max="30" value="3" step="1">
+  </div>
+  <div class="ctrl-group">
+    <label>Line Opacity <span class="val" id="vopa">0.8</span></label>
+    <input type="range" id="sopa" min="0.05" max="1" value="0.8" step="0.05">
+  </div>
+  <div class="ctrl-group">
+    <label>Line Width <span class="val" id="vlw">1.0</span></label>
+    <input type="range" id="slw" min="0.3" max="4" value="1" step="0.1">
+  </div>
+  <div class="color-row">
+    <label style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#8888aa;">Colors:</label>
+    <input type="color" class="color-pick" id="c1" value="#6666ff">
+    <input type="color" class="color-pick" id="c2" value="#ff66aa">
+    <input type="color" class="color-pick" id="c3" value="#66ffaa">
+    <input type="color" class="color-pick" id="c4" value="#ffaa33">
+  </div>
+  <div class="btn-row">
+    <button id="btnDraw">▶ Draw</button>
+    <button id="btnClear">✕ Clear</button>
+    <button id="btnSave">💾 Save</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const wrap = document.getElementById('canvas-wrap');
+
+  // Sliders
+  const sR = document.getElementById('sR');
+  const sr = document.getElementById('sr');
+  const sd = document.getElementById('sd');
+  const sspd = document.getElementById('sspd');
+  const sopa = document.getElementById('sopa');
+  const slw  = document.getElementById('slw');
+
+  // Value displays
+  const vR = document.getElementById('vR');
+  const vr = document.getElementById('vr');
+  const vd = document.getElementById('vd');
+  const vsp = document.getElementById('vspd');
+  const vopa = document.getElementById('vopa');
+  const vlw  = document.getElementById('vlw');
+
+  const btnDraw = document.getElementById('btnDraw');
+  const btnClear = document.getElementById('btnClear');
+  const btnSave  = document.getElementById('btnSave');
+
+  const colors = [
+    document.getElementById('c1'),
+    document.getElementById('c2'),
+    document.getElementById('c3'),
+    document.getElementById('c4')
+  ];
+
+  // State
+  let running = false;
+  let animId = null;
+  let angle = 0;
+  let totalAngle = 0;
+  let dpr = window.devicePixelRatio || 1;
+
+  // Resize canvas to fit
+  function resize() {
+    const w = wrap.clientWidth - 20;
+    const h = wrap.clientHeight - 10;
+    const size = Math.min(w, h, 700);
+    canvas.style.width = size + 'px';
+    canvas.style.height = size + 'px';
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function getParams() {
+    return {
+      R: +sR.value,
+      r: +sr.value,
+      d: +sd.value,
+      speed: +sspd.value,
+      opacity: +sopa.value,
+      lw: +slw.value
+    };
+  }
+
+  // Update value labels
+  function syncLabels() {
+    vR.textContent = sR.value;
+    vr.textContent = sr.value;
+    vd.textContent = sd.value;
+    vsp.textContent = sspd.value;
+    vopa.textContent = sopa.value;
+    vlw.textContent = slw.value;
+  }
+  [sR, sr, sd, sspd, sopa, slw].forEach(s => s.addEventListener('input', syncLabels));
+
+  // Spirograph math: parametric curve
+  // x = (R - r) * cos(t) + d * cos((R - r) / r * t)
+  // y = (R - r) * sin(t) - d * sin((R - r) / r * t)
+  function spiroX(t, p) {
+    return (p.R - p.r) * Math.cos(t) + p.d * Math.cos((p.R - p.r) / p.r * t);
+  }
+  function spiroY(t, p) {
+    return (p.R - p.r) * Math.sin(t) - p.d * Math.sin((p.R - p.r) / p.r * t);
+  }
+
+  // Compute LCM to find period (number of rotations to close)
+  function gcd(a, b) { while (b) { [a, b] = [b, a % b]; } return a; }
+  function lcm(a, b) { return (a * b) / gcd(a, b); }
+
+  // Draw a batch of points
+  function drawBatch() {
+    const p = getParams();
+    const cx = canvas.width / (2 * dpr);
+    const cy = canvas.height / (2 * dpr);
+    const scale = (Math.min(cx, cy) * 0.85) / Math.max(p.R + p.d, 1);
+
+    const step = (2 * Math.PI) / (600 * p.speed);
+    const batchSize = 200;
+
+    // Color cycling
+    const t = totalAngle;
+    const colorIdx = Math.floor(t / (Math.PI * 2)) % colors.length;
+    const col = colors[colorIdx].value;
+
+    ctx.strokeStyle = col;
+    ctx.globalAlpha = p.opacity;
+    ctx.lineWidth = p.lw;
+    ctx.lineCap = 'round';
+
+    let startX, startY, endX, endY;
+    const maxAngle = t + step * batchSize;
+
+    ctx.beginPath();
+    for (let a = t; a < maxAngle; a += step) {
+      const x = cx + spiroX(a, p) * scale;
+      const y = cy + spiroY(a, p) * scale;
+      if (a === t) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+    ctx.stroke();
+
+    totalAngle += step * batchSize;
+  }
+
+  function loop() {
+    drawBatch();
+
+    // Check if curve is complete by detecting closure
+    const p = getParams();
+    if (p.r === 0) return; // safety
+
+    const ratio = (p.R - p.r) / p.r;
+    // The curve closes after LCM(R-r, r) / r full rotations of the inner gear
+    const g = gcd(Math.round(p.R - p.r), Math.round(p.r));
+    const rotations = Math.round(lcm(Math.round(p.R - p.r), Math.round(p.r)) / Math.round(p.r));
+    const closureAngle = rotations * 2 * Math.PI;
+
+    if (totalAngle >= closureAngle + 0.5) {
+      stop();
+      return;
+    }
+
+    if (running) {
+      animId = requestAnimationFrame(loop);
+    }
+  }
+
+  function start() {
+    if (running) return;
+    running = true;
+    btnDraw.textContent = '⏸ Pause';
+    btnDraw.classList.add('paused');
+    loop();
+  }
+
+  function stop() {
+    running = false;
+    btnDraw.textContent = '▶ Draw';
+    btnDraw.classList.remove('paused');
+    if (animId) cancelAnimationFrame(animId);
+  }
+
+  // Toggle play/pause
+  btnDraw.addEventListener('click', () => {
+    if (running) stop(); else start();
+  });
+
+  // Clear
+  btnClear.addEventListener('click', () => {
+    stop();
+    totalAngle = 0;
+    angle = 0;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  });
+
+  // Save
+  btnSave.addEventListener('click', () => {
+    const link = document.createElement('a');
+    link.download = 'spirograph_' + Date.now() + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+
+  // Touch-friendly: adjust sliders on parameter change
+  function onParamChange() {
+    // If drawing, pause and redraw from start
+    if (running) {
+      stop();
+      totalAngle = 0;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      start();
+    } else {
+      totalAngle = 0;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+  [sR, sr, sd].forEach(s => s.addEventListener('change', onParamChange));
+
+  // Keyboard shortcut: spacebar to toggle
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space' && e.target === document.body) {
+      e.preventDefault();
+      btnDraw.click();
+    }
+  });
+
+  // Draw an initial preview
+  function drawPreview() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    totalAngle = 0;
+    const p = getParams();
+    const cx = canvas.width / (2 * dpr);
+    const cy = canvas.height / (2 * dpr);
+    const scale = (Math.min(cx, cy) * 0.85) / Math.max(p.R + p.d, 1);
+
+    // Draw gear circles as guide
+    ctx.globalAlpha = 0.15;
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#4444aa';
+
+    // Outer circle
+    ctx.beginPath();
+    ctx.arc(cx, cy, p.R * scale, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Inner circle path
+    ctx.beginPath();
+    ctx.arc(cx, cy - (p.R - p.r) * scale, p.r * scale, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Draw the full curve as preview
+    const g = gcd(Math.round(p.R - p.r), Math.round(p.r));
+    const rotations = Math.round(lcm(Math.round(p.R - p.r), Math.round(p.r)) / Math.round(p.r));
+    const total = rotations * 2 * Math.PI;
+    const step = total / 5000;
+    const col = colors[0].value;
+
+    ctx.globalAlpha = 0.3;
+    ctx.lineWidth = p.lw * 0.8;
+    ctx.strokeStyle = col;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let a = 0; a <= total; a += step) {
+      const x = cx + spiroX(a, p) * scale;
+      const y = cy + spiroY(a, p) * scale;
+      if (a === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Draw pen position indicator
+    const penX = cx + spiroX(0, p) * scale;
+    const penY = cy + spiroY(0, p) * scale;
+    ctx.globalAlpha = 0.8;
+    ctx.fillStyle = '#ff4466';
+    ctx.beginPath();
+    ctx.arc(penX, penY, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = 1;
+    btnDraw.textContent = '▶ Draw';
+  }
+
+  // Initial draw
+  syncLabels();
+  drawPreview();
+})();
+</script>
+</body>
+</html>
