@@ -50,7 +50,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [ ] **Coin Flip** — Animated coin flip with heads/tails history.
 - [ ] **Random Name Picker** — Paste names, randomly pick one.
 - [ ] **Color Palette Generator** — Generate harmonious color palettes from a seed.
-- [ ] **Typing Speed Test** — Type the displayed text as fast as possible, WPM + accuracy.
+- [x] **Typing Speed Test** — Type the displayed text as fast as possible, WPM + accuracy.
 - [ ] **Number Guessing Game** — Computer picks a number, user guesses with high/low hints.
 - [x] **Rock Paper Scissors** — Play vs computer, animated, track score.
 - [ ] **Mad Libs Generator** — Prompt for words, assemble a silly story.
