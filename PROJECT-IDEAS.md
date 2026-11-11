@@ -36,7 +36,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [ ] **Color Mixer** — Blend colors interactively using sliders or drag-to-mix.
 - [ ] **Rotoscope** — Upload an image, trace over it with draggable lines/curves.
 - [ ] **Maze Generator** — Auto-generate a maze, user can solve it by navigating.
-- [ ] **Chaos Game** — Fractal points drawn by random vertex selection rules.
+- [x] **Chaos Game** — Fractal points drawn by random vertex selection rules.
 - [x] **Spirograph** — Draw spirograph patterns by adjusting gear parameters.
 - [ ] **Music Visualizer** — Canvas visualizes microphone input as bars, circles, or waves.
 - [ ] **Kaleidoscope** — Mirror the mouse cursor in real time to create kaleidoscopic patterns.
@@ -46,7 +46,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 ## Utilities / Fun
 
 - [ ] **Stopwatch / Timer** — Lap times, countdown timer with visual alarm.
-- [ ] **Dice Roller** — Roll 1–N dice, show results, keep history.
+- [x] **Dice Roller** — Roll 1–N dice, show results, keep history.
 - [ ] **Coin Flip** — Animated coin flip with heads/tails history.
 - [ ] **Random Name Picker** — Paste names, randomly pick one.
 - [ ] **Color Palette Generator** — Generate harmonious color palettes from a seed.
