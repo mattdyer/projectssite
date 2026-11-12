@@ -196,14 +196,14 @@
 <h1>Tic-Tac-Toe</h1>
 
 <div class="mode-toggle">
-  <button id="btn-ai" class="active" onclick="setMode('ai')">vs Computer</button>
-  <button id="btn-2p" onclick="setMode('2p')">2 Players</button>
+<button id="btn-ai" class="active" data-mode="ai">vs Computer</button>
+<button id="btn-2p" data-mode="2p">2 Players</button>
 </div>
 
 <div class="difficulty-toggle" id="diff-toggle">
-  <button onclick="setDiff('easy')">Easy</button>
-  <button onclick="setDiff('medium')">Medium</button>
-  <button onclick="setDiff('hard')" class="active">Unbeatable</button>
+<button data-diff="easy">Easy</button>
+<button data-diff="medium">Medium</button>
+<button data-diff="hard" class="active">Unbeatable</button>
 </div>
 
 <div class="scoreboard">
@@ -215,20 +215,20 @@
 <div class="status" id="status">X goes first</div>
 
 <div class="board" id="board">
-  <div class="cell" data-idx="0" onclick="handleClick(0)"></div>
-  <div class="cell" data-idx="1" onclick="handleClick(1)"></div>
-  <div class="cell" data-idx="2" onclick="handleClick(2)"></div>
-  <div class="cell" data-idx="3" onclick="handleClick(3)"></div>
-  <div class="cell" data-idx="4" onclick="handleClick(4)"></div>
-  <div class="cell" data-idx="5" onclick="handleClick(5)"></div>
-  <div class="cell" data-idx="6" onclick="handleClick(6)"></div>
-  <div class="cell" data-idx="7" onclick="handleClick(7)"></div>
-  <div class="cell" data-idx="8" onclick="handleClick(8)"></div>
+  <div class="cell" data-idx="0"></div>
+  <div class="cell" data-idx="1"></div>
+  <div class="cell" data-idx="2"></div>
+  <div class="cell" data-idx="3"></div>
+  <div class="cell" data-idx="4"></div>
+  <div class="cell" data-idx="5"></div>
+  <div class="cell" data-idx="6"></div>
+  <div class="cell" data-idx="7"></div>
+  <div class="cell" data-idx="8"></div>
 </div>
 
 <div class="controls">
-  <button onclick="resetBoard()">New Game</button>
-  <button onclick="resetAll()">Reset Scores</button>
+  <button id="btn-reset">New Game</button>
+  <button id="btn-reset-scores">Reset Scores</button>
 </div>
 
 <script>
@@ -248,6 +248,36 @@ let scores = { X: 0, O: 0, D: 0 };
 const cells = document.querySelectorAll('.cell');
 const statusEl = document.getElementById('status');
 
+// --- Event Listeners ---
+
+// Board cell clicks (direct listeners on each cell for click support)
+cells.forEach(function(cell) {
+  cell.addEventListener('click', function(e) {
+    const idx = parseInt(this.getAttribute('data-idx'), 10);
+    handleClick(idx);
+  });
+});
+
+// Mode toggle buttons
+document.querySelectorAll('.mode-toggle button').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    setMode(this.getAttribute('data-mode'));
+  });
+});
+
+// Difficulty toggle buttons
+document.querySelectorAll('.difficulty-toggle button').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    setDiff(this.getAttribute('data-diff'));
+  });
+});
+
+// Control buttons
+document.getElementById('btn-reset').addEventListener('click', resetBoard);
+document.getElementById('btn-reset-scores').addEventListener('click', resetAll);
+
+// --- Game Logic ---
+
 function setMode(m) {
   mode = m;
   document.getElementById('btn-ai').classList.toggle('active', m === 'ai');
@@ -258,8 +288,13 @@ function setMode(m) {
 
 function setDiff(d) {
   difficulty = d;
-  document.querySelectorAll('.difficulty-toggle button').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
+  document.querySelectorAll('.difficulty-toggle button').forEach(function(b) {
+    b.classList.remove('active');
+  });
+  // Find button by data-diff attribute
+  document.querySelectorAll('.difficulty-toggle button').forEach(function(b) {
+    if (b.getAttribute('data-diff') === d) b.classList.add('active');
+  });
   resetAll();
 }
 
@@ -277,7 +312,7 @@ function handleClick(idx) {
 function makeMove(idx) {
   board[idx] = currentPlayer;
   const cell = cells[idx];
-  cell.innerHTML = `<span>${currentPlayer}</span>`;
+  cell.innerHTML = '<span>' + currentPlayer + '</span>';
   cell.classList.add('taken', currentPlayer === 'X' ? 'x-mark' : 'o-mark');
 
   const win = checkWin(board, currentPlayer);
@@ -286,31 +321,37 @@ function makeMove(idx) {
     highlightWin(win);
     scores[currentPlayer]++;
     updateScores();
-    statusEl.textContent = `${currentPlayer} wins! 🎉`;
+    statusEl.textContent = currentPlayer + ' wins! \uD83C\uDF89';
     return;
   }
 
-  if (board.every(c => c)) {
+  if (board.every(function(c) { return c; })) {
     gameOver = true;
     scores.D++;
     updateScores();
-    statusEl.textContent = "It's a draw! 🤝";
+    statusEl.textContent = "It's a draw! \uD83D\uDD1D";
     return;
   }
 
   currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-  statusEl.textContent = mode === 'ai' && currentPlayer === 'O' ? 'Computer thinking...' : `${currentPlayer}'s turn`;
+  statusEl.textContent = (mode === 'ai' && currentPlayer === 'O')
+    ? 'Computer thinking...'
+    : currentPlayer + "'s turn";
 }
 
 function checkWin(b, player) {
-  for (const combo of WIN_COMBOS) {
-    if (combo.every(i => b[i] === player)) return combo;
+  for (let i = 0; i < WIN_COMBOS.length; i++) {
+    const combo = WIN_COMBOS[i];
+    if (combo[0] !== undefined && b[combo[0]] === player &&
+        b[combo[1]] === player && b[combo[2]] === player) {
+      return combo;
+    }
   }
   return null;
 }
 
 function highlightWin(combo) {
-  combo.forEach(i => cells[i].classList.add('win-cell'));
+  combo.forEach(function(i) { cells[i].classList.add('win-cell'); });
 }
 
 function updateScores() {
@@ -323,7 +364,7 @@ function resetBoard() {
   board = Array(9).fill('');
   currentPlayer = 'X';
   gameOver = false;
-  cells.forEach(c => { c.innerHTML = ''; c.className = 'cell'; });
+  cells.forEach(function(c) { c.innerHTML = ''; c.className = 'cell'; });
   statusEl.textContent = "X goes first";
 }
 
@@ -342,13 +383,13 @@ function aiMove() {
   else move = aiBest();
 
   makeMove(move);
-  if (mode === 'ai' && !gameOver) {
-    // Player's turn again
-  }
 }
 
 function aiEasy() {
-  const empty = board.map((v, i) => v === '' ? i : null).filter(v => v !== null);
+  const empty = [];
+  for (let i = 0; i < 9; i++) {
+    if (board[i] === '') empty.push(i);
+  }
   return empty[Math.floor(Math.random() * empty.length)];
 }
 
@@ -371,7 +412,7 @@ function aiBest() {
 function minimax(b, depth, isMax) {
   if (checkWin(b, 'O')) return 10 - depth;
   if (checkWin(b, 'X')) return depth - 10;
-  if (b.every(c => c)) return 0;
+  if (b.every(function(c) { return c; })) return 0;
 
   if (isMax) {
     let best = -Infinity;
@@ -393,11 +434,6 @@ function minimax(b, depth, isMax) {
     return best;
   }
 }
-
-// Touch support: prevent double-tap zoom
-document.addEventListener('touchend', e => {
-  if (e.target.closest('.cell')) e.preventDefault();
-}, { passive: false });
 </script>
 
 </body>
