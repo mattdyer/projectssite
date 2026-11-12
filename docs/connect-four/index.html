@@ -234,19 +234,21 @@ function buildColHover() {
     const d = document.createElement('div');
     d.className = 'col-indicator';
     d.innerHTML = '<span class="arrow">▼</span>';
+    d.dataset.col = c;
+    // Direct click handler on each indicator
+    d.addEventListener('click', e => {
+      e.stopPropagation();
+      dropPiece(c);
+    });
+    // Also handle touch for mobile
+    d.addEventListener('touchend', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropPiece(c);
+    });
     colHover.appendChild(d);
   }
   colHover.style.width = boardPx + 'px';
-
-  // Use pointerup for reliable click handling on column indicators
-  colHover.addEventListener('pointerup', e => {
-    const indicator = e.target.closest('.col-indicator');
-    if (indicator) {
-      const indicators = colHover.querySelectorAll('.col-indicator');
-      const col = Array.from(indicators).indexOf(indicator);
-      if (col >= 0 && col < COLS) dropPiece(col);
-    }
-  });
   colHover.style.pointerEvents = 'auto';
 }
 
@@ -668,7 +670,13 @@ canvas.addEventListener('pointerdown', e => {
 });
 
 canvas.addEventListener('pointermove', e => {
-  const col = getColFromPointer(e);
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const x = (e.clientX - rect.left) * scaleX;
+  // Only handle if pointer is within the board area (below the column hover zone)
+  const y = e.clientY - rect.top;
+  if (y < topPad) return; // pointer is over column hover area
+  const col = Math.floor(x / cellSize);
   if (col !== hoverCol) {
     hoverCol = col;
     // Flash column
