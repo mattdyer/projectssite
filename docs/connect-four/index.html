@@ -235,17 +235,15 @@ function buildColHover() {
     d.className = 'col-indicator';
     d.innerHTML = '<span class="arrow">▼</span>';
     d.dataset.col = c;
-    // Direct click handler on each indicator
-    d.addEventListener('click', e => {
-      e.stopPropagation();
-      dropPiece(c);
-    });
-    // Also handle touch for mobile
-    d.addEventListener('touchend', e => {
+
+    // pointerdown fires before click/pointerup — handle here with stopPropagation
+    // to ensure the canvas never intercepts the event
+    d.addEventListener('pointerdown', e => {
       e.preventDefault();
       e.stopPropagation();
       dropPiece(c);
     });
+
     colHover.appendChild(d);
   }
   colHover.style.width = boardPx + 'px';
@@ -670,13 +668,11 @@ canvas.addEventListener('pointerdown', e => {
 });
 
 canvas.addEventListener('pointermove', e => {
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const x = (e.clientX - rect.left) * scaleX;
   // Only handle if pointer is within the board area (below the column hover zone)
+  const rect = canvas.getBoundingClientRect();
   const y = e.clientY - rect.top;
-  if (y < topPad) return; // pointer is over column hover area
-  const col = Math.floor(x / cellSize);
+  if (y < topPad) return;
+  const col = getColFromPointer(e);
   if (col !== hoverCol) {
     hoverCol = col;
     // Flash column
