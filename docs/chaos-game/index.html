@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Chaos Game</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0a0a1a;
+  color: #e0e0e0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  overflow-x: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+h1 {
+  font-size: 1.4rem;
+  margin: 10px 0 6px;
+  background: linear-gradient(90deg, #ff6fd8, #3813c2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+#canvas-wrap {
+  position: relative;
+  margin: 4px;
+}
+canvas {
+  border: 1px solid #2a2a4a;
+  border-radius: 8px;
+  display: block;
+  background: #000;
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  max-width: 500px;
+}
+button, select {
+  background: #1a1a3a;
+  color: #e0e0e0;
+  border: 1px solid #3a3a6a;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+button:hover, select:hover { background: #2a2a5a; }
+button:active { background: #3a3a7a; }
+button.active { border-color: #ff6fd8; background: #2a1a3a; }
+label.ctrl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #aaa;
+}
+input[type="range"] { width: 80px; accent-color: #ff6fd8; }
+#stats {
+  font-size: 0.75rem;
+  color: #666;
+  margin: 4px 0 8px;
+}
+#hint {
+  font-size: 0.7rem;
+  color: #555;
+  margin-bottom: 10px;
+}
+</style>
+</head>
+<body>
+
+<h1>Chaos Game</h1>
+
+<div class="controls">
+  <select id="shape">
+    <option value="3">Triangle</option>
+    <option value="4" selected>Square</option>
+    <option value="5">Pentagon</option>
+    <option value="6">Hexagon</option>
+    <option value="8">Octagon</option>
+  </select>
+  <label class="ctrl">
+    Step:
+    <input type="range" id="steps" min="500" max="200000" value="50000" step="500">
+    <span id="steps-val">50K</span>
+  </label>
+  <label class="ctrl">
+    Speed:
+    <input type="range" id="speed" min="1" max="500" value="100" step="1">
+  </label>
+  <label class="ctrl">
+    Jump:
+    <input type="range" id="jump" min="0.4" max="0.9" value="0.6" step="0.05">
+  </label>
+  <button id="btn-reset">Reset</button>
+  <button id="btn-color">Color</button>
+  <button id="btn-pause">Pause</button>
+</div>
+
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+</div>
+
+<div id="stats">Points: 0 / 50,000</div>
+<div id="hint">Each point is placed halfway to a random vertex — fractals emerge from chaos!</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+// Responsive sizing
+function resize() {
+  const maxW = Math.min(window.innerWidth - 20, 500);
+  const size = Math.floor(maxW / 50) * 50;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.style.width = size + 'px';
+  canvas.style.height = size + 'px';
+  canvas.width = size * dpr;
+  canvas.height = size * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return size;
+}
+
+let W = resize();
+window.addEventListener('resize', () => { W = resize(); if (!running) drawVertices(); });
+
+// State
+let running = false;
+let paused = false;
+let pointCount = 0;
+let totalSteps = 50000;
+let speed = 100;
+let jumpFactor = 0.6;
+let colorMode = 0; // 0=hue by count, 1=hue by vertex, 2=white
+let vertices = [];
+let current = { x: 0, y: 0 };
+
+const colors = ['#ff6fd8', '#3813c2', '#00e5ff', '#ff3d3d', '#3dff8e', '#ffe03d'];
+
+function getVertices(n, size) {
+  const cx = size / 2, cy = size / 2, r = size * 0.42;
+  const verts = [];
+  const offset = -Math.PI / 2;
+  for (let i = 0; i < n; i++) {
+    const a = offset + (2 * Math.PI * i) / n;
+    verts.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+  }
+  return verts;
+}
+
+function drawVertices() {
+  const s = W;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, s, s);
+  vertices = getVertices(parseInt(document.getElementById('shape').value), s);
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.moveTo(vertices[0].x, vertices[0].y);
+  for (let i = 1; i < vertices.length; i++) ctx.lineTo(vertices[i].x, vertices[i].y);
+  ctx.closePath();
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = '#fff';
+  for (const v of vertices) {
+    ctx.beginPath();
+    ctx.arc(v.x, v.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function getColor(i) {
+  if (colorMode === 2) return '#00e5ff';
+  if (colorMode === 1) {
+    const vi = Math.floor((i / totalSteps) * vertices.length) % vertices.length;
+    return colors[vi % colors.length];
+  }
+  // colorMode 0: hue by point count
+  const hue = (i * 0.05) % 360;
+  return `hsl(${hue}, 80%, 60%)`;
+}
+
+function step() {
+  if (!running || paused) return;
+  for (let b = 0; b < speed; b++) {
+    if (pointCount >= totalSteps) { running = false; updateStats(); return; }
+    const v = vertices[Math.floor(Math.random() * vertices.length)];
+    current.x = current.x + (v.x - current.x) * jumpFactor;
+    current.y = current.y + (v.y - current.y) * jumpFactor;
+    ctx.fillStyle = getColor(pointCount);
+    ctx.fillRect(current.x, current.y, 1, 1);
+    pointCount++;
+  }
+  updateStats();
+  if (running) requestAnimationFrame(step);
+}
+
+function start() {
+  const sz = W;
+  current = { x: sz / 2, y: sz / 2 };
+  totalSteps = parseInt(document.getElementById('steps').value);
+  speed = parseInt(document.getElementById('speed').value);
+  jumpFactor = parseFloat(document.getElementById('jump').value);
+  running = true;
+  paused = false;
+  document.getElementById('btn-pause').textContent = 'Pause';
+  drawVertices();
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, sz, sz);
+  step();
+}
+
+function updateStats() {
+  document.getElementById('stats').textContent = `Points: ${pointCount.toLocaleString()} / ${totalSteps.toLocaleString()}`;
+}
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  running = false;
+  paused = false;
+  pointCount = 0;
+  document.getElementById('btn-pause').textContent = 'Pause';
+  updateStats();
+  drawVertices();
+});
+
+document.getElementById('btn-pause').addEventListener('click', () => {
+  paused = !paused;
+  document.getElementById('btn-pause').textContent = paused ? 'Resume' : 'Pause';
+  if (!paused) step();
+});
+
+document.getElementById('btn-color').addEventListener('click', () => {
+  colorMode = (colorMode + 1) % 3;
+  const labels = ['Hue: Count', 'Hue: Vertex', 'Cyan'];
+  document.getElementById('btn-color').textContent = labels[colorMode];
+});
+
+document.getElementById('steps').addEventListener('input', (e) => {
+  const v = parseInt(e.target.value);
+  document.getElementById('steps-val').textContent = v >= 1000 ? (v/1000) + 'K' : v;
+});
+
+document.getElementById('shape').addEventListener('change', () => {
+  running = false;
+  paused = false;
+  pointCount = 0;
+  document.getElementById('btn-pause').textContent = 'Pause';
+  updateStats();
+  drawVertices();
+});
+
+// Touch/mouse to set initial point on canvas
+canvas.addEventListener('click', (e) => {
+  if (!running) {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    current = { x, y };
+  }
+});
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  if (!running) {
+    const rect = canvas.getBoundingClientRect();
+    const t = e.touches[0];
+    const x = t.clientX - rect.left;
+    const y = t.clientY - rect.top;
+    current = { x, y };
+  }
+});
+
+// Init
+drawVertices();
+current = { x: W / 2, y: W / 2 };
+updateStats();
+</script>
+</body>
+</html>

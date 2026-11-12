@@ -250,9 +250,9 @@ const statusEl = document.getElementById('status');
 
 // --- Event Listeners ---
 
-// Board cell clicks (direct listeners on each cell with pointerdown for touch support)
+// Board cell clicks (direct listeners on each cell for click support)
 cells.forEach(function(cell) {
-  cell.addEventListener('pointerdown', function(e) {
+  cell.addEventListener('click', function(e) {
     const idx = parseInt(this.getAttribute('data-idx'), 10);
     handleClick(idx);
   });
