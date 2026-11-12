@@ -35,7 +35,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [ ] **Generative Art — Flow Fields** — Particles flowing along a noise-based vector field.
 - [ ] **Color Mixer** — Blend colors interactively using sliders or drag-to-mix.
 - [ ] **Rotoscope** — Upload an image, trace over it with draggable lines/curves.
-- [ ] **Maze Generator** — Auto-generate a maze, user can solve it by navigating.
+- [x] **Maze Generator** — Auto-generate a maze, user can solve it by navigating.
 - [x] **Chaos Game** — Fractal points drawn by random vertex selection rules.
 - [x] **Spirograph** — Draw spirograph patterns by adjusting gear parameters.
 - [ ] **Music Visualizer** — Canvas visualizes microphone input as bars, circles, or waves.
