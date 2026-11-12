@@ -39,7 +39,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [x] **Chaos Game** — Fractal points drawn by random vertex selection rules.
 - [x] **Spirograph** — Draw spirograph patterns by adjusting gear parameters.
 - [ ] **Music Visualizer** — Canvas visualizes microphone input as bars, circles, or waves.
-- [ ] **Kaleidoscope** — Mirror the mouse cursor in real time to create kaleidoscopic patterns.
+- [x] **Kaleidoscope** — Mirror the mouse cursor in real time to create kaleidoscopic patterns.
 - [ ] **Gravity Drawing** — Draw strokes that fall with simulated gravity.
 - [ ] **Digital Clock with Particle Background** — Time display with animated particles.
 
