@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Mandala Generator</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a1a;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    overflow-x: hidden;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  h1 {
+    font-size: 1.4rem;
+    padding: 12px 0 4px;
+    background: linear-gradient(90deg, #ff6fd8, #6fc3ff, #6fffb0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 2px;
+  }
+  #toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 12px;
+    max-width: 640px;
+    width: 100%;
+  }
+  .ctrl-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 8px;
+    padding: 6px 10px;
+  }
+  .ctrl-group label { font-size: 0.75rem; opacity: 0.8; white-space: nowrap; }
+  input[type="range"] {
+    width: 80px;
+    accent-color: #ff6fd8;
+    cursor: pointer;
+  }
+  input[type="color"] {
+    width: 32px; height: 28px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-radius: 6px;
+    cursor: pointer;
+    background: none;
+    padding: 0;
+  }
+  select {
+    background: rgba(255,255,255,0.1);
+    color: #e0e0e0;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  button {
+    background: linear-gradient(135deg, #ff6fd8, #6f6fff);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: transform 0.15s, opacity 0.15s;
+  }
+  button:hover { transform: scale(1.05); opacity: 0.9; }
+  button:active { transform: scale(0.97); }
+  button.ghost {
+    background: rgba(255,255,255,0.08);
+  }
+  #canvas-wrap {
+    position: relative;
+    margin: 8px 0 16px;
+  }
+  canvas {
+    border-radius: 12px;
+    background: #0d0d24;
+    box-shadow: 0 0 40px rgba(111, 111, 255, 0.15);
+    display: block;
+  }
+  #stroke-w { font-variant-numeric: tabular-nums; min-width: 18px; display: inline-block; text-align: center; }
+  .val-display { font-size: 0.75rem; min-width: 16px; text-align: center; color: #ff6fd8; font-weight: bold; }
+  #hint {
+    font-size: 0.7rem; opacity: 0.4; margin-top: 2px; margin-bottom: 8px; text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<h1>Mandala Generator</h1>
+
+<div id="toolbar">
+  <div class="ctrl-group">
+    <label>Symmetry:</label>
+    <input type="range" id="symmetry" min="2" max="24" value="8">
+    <span class="val-display" id="sym-val">8</span>
+  </div>
+  <div class="ctrl-group">
+    <label>Brush:</label>
+    <input type="range" id="brush" min="1" max="30" value="4">
+    <span class="val-display" id="brush-val">4</span>
+  </div>
+  <div class="ctrl-group">
+    <label>Color:</label>
+    <input type="color" id="color" value="#ff6fd8">
+  </div>
+  <div class="ctrl-group">
+    <label>Style:</label>
+    <select id="style">
+      <option value="solid">Solid</option>
+      <option value="glow">Neon Glow</option>
+      <option value="dotted">Dotted</option>
+    </select>
+  </div>
+  <button id="undo">Undo</button>
+  <button id="clear" class="ghost">Clear</button>
+  <button id="save">Save PNG</button>
+</div>
+
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+</div>
+<div id="hint">Draw or tap on the canvas to create your mandala ✦</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('canvas-wrap');
+
+/* ---- sizing ---- */
+function resize() {
+  const s = Math.min(window.innerWidth - 24, 560, window.innerHeight - 220);
+  canvas.width = s;
+  canvas.height = s;
+  wrap.style.width = s + 'px';
+  wrap.style.height = s + 'px';
+  redraw();
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* ---- state ---- */
+const symmetrySlider = document.getElementById('symmetry');
+const brushSlider = document.getElementById('brush');
+const colorPicker = document.getElementById('color');
+const styleSel = document.getElementById('style');
+const symVal = document.getElementById('sym-val');
+const brushVal = document.getElementById('brush-val');
+
+let symmetry = parseInt(symmetrySlider.value);
+let brushSize = parseInt(brushSlider.value);
+let color = colorPicker.value;
+let style = styleSel.value;
+
+symmetrySlider.addEventListener('input', () => {
+  symmetry = parseInt(symmetrySlider.value);
+  symVal.textContent = symmetry;
+});
+brushSlider.addEventListener('input', () => {
+  brushSize = parseInt(brushSlider.value);
+  brushVal.textContent = brushSize;
+});
+colorPicker.addEventListener('input', () => { color = colorPicker.value; });
+styleSel.addEventListener('change', () => { style = styleSel.value; });
+
+/* ---- stroke history for undo ---- */
+let strokes = []; // array of {pts: [{x,y}], color, brush, style}
+let currentStroke = null;
+
+function cx() { return canvas.width / 2; }
+function cy() { return canvas.height / 2; }
+
+function screenToCenter(mx, my) {
+  return { dx: mx - cx(), dy: my - cy() };
+}
+
+function centerToScreen(dx, dy) {
+  return { x: dx + cx(), y: dy + cy() };
+}
+
+function drawDot(ctx2, cx2, cy2, dx, dy, col, br, sty) {
+  const r = br / 2;
+  ctx2.save();
+  if (sty === 'glow') {
+    ctx2.shadowColor = col;
+    ctx2.shadowBlur = 12;
+  } else if (sty === 'dotted') {
+    ctx2.globalAlpha = 0.7;
+  }
+  ctx2.fillStyle = col;
+  ctx2.beginPath();
+  ctx2.arc(cx2 + dx, cy2 + dy, r, 0, Math.PI * 2);
+  ctx2.fill();
+  if (sty === 'dotted') {
+    ctx2.globalAlpha = 1;
+    ctx2.fillStyle = '#fff';
+    ctx2.beginPath();
+    ctx2.arc(cx2 + dx, cy2 + dy, r * 0.4, 0, Math.PI * 2);
+    ctx2.fill();
+  }
+  ctx2.restore();
+}
+
+function drawStroke(ctx2, stroke) {
+  const { pts, color: col, brush: br, style: sty } = stroke;
+  if (pts.length < 1) return;
+  const angle = (Math.PI * 2) / symmetry;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i];
+    const b = pts[i - 1];
+    for (let s = 0; s < symmetry; s++) {
+      const cos = Math.cos(s * angle);
+      const sin = Math.sin(s * angle);
+      const ax = a.dx * cos - a.dy * sin;
+      const ay = a.dx * sin + a.dy * cos;
+      const bx = b.dx * cos - b.dy * sin;
+      const by = b.dx * sin + b.dy * cos;
+      ctx2.strokeStyle = col;
+      ctx2.lineWidth = br;
+      ctx2.lineCap = 'round';
+      ctx2.lineJoin = 'round';
+      if (sty === 'glow') {
+        ctx2.shadowColor = col;
+        ctx2.shadowBlur = 14;
+      } else if (sty === 'dotted') {
+        ctx2.globalAlpha = 0.6;
+      } else {
+        ctx2.shadowBlur = 0;
+        ctx2.globalAlpha = 1;
+      }
+      ctx2.beginPath();
+      ctx2.moveTo(cx2() + bx, cy2() + by);
+      ctx2.lineTo(cx2() + ax, cy2() + ay);
+      ctx2.stroke();
+    }
+  }
+  // draw dots at endpoints
+  for (let s = 0; s < symmetry; s++) {
+    const cos = Math.cos(s * angle);
+    const sin = Math.sin(s * angle);
+    const ax = pts[0].dx * cos - pts[0].dy * sin;
+    const ay = pts[0].dx * sin + pts[0].dy * cos;
+    if (pts.length > 1) {
+      const a2 = pts[pts.length - 1];
+      const ax2 = a2.dx * cos - a2.dy * sin;
+      const ay2 = a2.dx * sin + a2.dy * sin;
+      drawDot(ctx2, 0, 0, ax2, ay2, col, br, sty);
+    }
+    drawDot(ctx2, 0, 0, ax, ay, col, br, sty);
+  }
+}
+
+function redraw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // draw center circle hint
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx(), cy(), 4, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+  for (const stroke of strokes) {
+    drawStroke(ctx, stroke);
+  }
+  if (currentStroke) {
+    drawStroke(ctx, currentStroke);
+  }
+}
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  let clientX, clientY;
+  if (e.touches && e.touches.length > 0) {
+    clientX = e.touches[0].clientX;
+    clientY = e.touches[0].clientY;
+  } else {
+    clientX = e.clientX;
+    clientY = e.clientY;
+  }
+  return {
+    dx: clientX - rect.left - cx(),
+    dy: clientY - rect.top - cy()
+  };
+}
+
+function startStroke(e) {
+  e.preventDefault();
+  const pos = getPos(e);
+  currentStroke = { pts: [pos], color: color, brush: brushSize, style: style };
+}
+
+function moveStroke(e) {
+  e.preventDefault();
+  if (!currentStroke) return;
+  const pos = getPos(e);
+  currentStroke.pts.push(pos);
+  redraw();
+}
+
+function endStroke(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  if (!currentStroke) return;
+  strokes.push(currentStroke);
+  currentStroke = null;
+  redraw();
+}
+
+canvas.addEventListener('mousedown', startStroke);
+canvas.addEventListener('mousemove', moveStroke);
+canvas.addEventListener('mouseup', endStroke);
+canvas.addEventListener('mouseleave', endStroke);
+
+canvas.addEventListener('touchstart', startStroke, { passive: false });
+canvas.addEventListener('touchmove', moveStroke, { passive: false });
+canvas.addEventListener('touchend', endStroke, { passive: false });
+canvas.addEventListener('touchcancel', endStroke, { passive: false });
+
+document.getElementById('undo').addEventListener('click', () => {
+  if (strokes.length > 0) {
+    strokes.pop();
+    redraw();
+  }
+});
+
+document.getElementById('clear').addEventListener('click', () => {
+  strokes = [];
+  redraw();
+});
+
+document.getElementById('save').addEventListener('click', () => {
+  const link = document.createElement('a');
+  link.download = 'mandala.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+});
+
+/* initial draw */
+redraw();
+</script>
+</body>
+</html>
