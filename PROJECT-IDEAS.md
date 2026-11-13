@@ -30,7 +30,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 
 - [x] **Pixel Art Editor** — Grid-based drawing tool with color palette, fill, and export.
 - [x] **Mandala Generator** — Symmetrical art tool where you draw one stroke and it mirrors.
-- [ ] **Fractal Explorer** — Interactive Mandelbrot/Julia set zoom and pan.
+- [x] **Fractal Explorer** — Interactive Mandelbrot/Julia set zoom and pan.
 - [ ] **Waveform Synth** — Draw a waveform shape and hear it as sound.
 - [ ] **Generative Art — Flow Fields** — Particles flowing along a noise-based vector field.
 - [ ] **Color Mixer** — Blend colors interactively using sliders or drag-to-mix.
