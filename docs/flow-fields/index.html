@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flow Fields — Generative Art</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    color: #ccc;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  #canvas {
+    flex: 1;
+    display: block;
+    cursor: crosshair;
+    touch-action: none;
+  }
+  #controls {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: rgba(10,10,20,0.85);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 16px;
+    width: 260px;
+    z-index: 10;
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+  #controls.collapsed {
+    transform: translateX(-280px);
+    opacity: 0;
+    pointer-events: none;
+  }
+  #toggleBtn {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 11;
+    background: rgba(10,10,20,0.85);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    color: #fff;
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  #controls.collapsed ~ #toggleBtn { display: flex; }
+  h1 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    color: #fff;
+    letter-spacing: 0.5px;
+  }
+  .field { margin-bottom: 12px; }
+  label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    margin-bottom: 4px;
+    color: #aaa;
+  }
+  label span.val { color: #7df; font-weight: 600; }
+  input[type=range] {
+    width: 100%;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #7df;
+    cursor: pointer;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #7df;
+    cursor: pointer;
+    border: none;
+  }
+  select {
+    width: 100%;
+    padding: 6px 8px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 12px;
+    outline: none;
+    cursor: pointer;
+  }
+  select option { background: #1a1a2e; }
+  .btn-row { display: flex; gap: 8px; margin-top: 8px; }
+  button {
+    flex: 1;
+    padding: 8px 0;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  button:hover { background: rgba(255,255,255,0.15); }
+  .hint {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    pointer-events: none;
+    text-align: center;
+  }
+  @media (max-width: 600px) {
+    #controls { width: 220px; padding: 12px; font-size: 11px; }
+    #controls.collapsed { transform: translateX(-240px); }
+  }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<div id="controls">
+  <h1>⚡ Flow Fields</h1>
+
+  <div class="field">
+    <label>Particles <span class="val" id="vCount">800</span></label>
+    <input type="range" id="pCount" min="50" max="3000" value="800" step="50">
+  </div>
+
+  <div class="field">
+    <label>Speed <span class="val" id="vSpeed">1.0</span></label>
+    <input type="range" id="speed" min="0.1" max="5" value="1" step="0.1">
+  </div>
+
+  <div class="field">
+    <label>Noise Scale <span class="val" id="vNoise">0.005</span></label>
+    <input type="range" id="noiseScale" min="0.001" max="0.03" value="0.005" step="0.001">
+  </div>
+
+  <div class="field">
+    <label>Trail Fade <span class="val" id="vFade">0.02</span></label>
+    <input type="range" id="fadeRate" min="0.005" max="0.15" value="0.02" step="0.005">
+  </div>
+
+  <div class="field">
+    <label>Line Width <span class="val" id="vWidth">1.2</span></label>
+    <input type="range" id="lineWidth" min="0.3" max="4" value="1.2" step="0.1">
+  </div>
+
+  <div class="field">
+    <label>Color Mode</label>
+    <select id="colorMode">
+      <option value="spectrum">Rainbow Spectrum</option>
+      <option value="ocean">Ocean Blues</option>
+      <option value="fire">Fire &amp; Gold</option>
+      <option value="aurora">Northern Lights</option>
+      <option value="neon">Neon Cyber</option>
+      <option value="mono">Monochrome</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label>Noise Type</label>
+    <select id="noiseType">
+      <option value="perlin">Perlin Noise</option>
+      <option value="simplex">Simplex Noise</option>
+    </select>
+  </div>
+
+  <div class="btn-row">
+    <button id="resetBtn">Reset</button>
+    <button id="screenshotBtn">Save PNG</button>
+  </div>
+  <div class="btn-row">
+    <button id="collapseBtn">Hide Panel</button>
+  </div>
+</div>
+<button id="toggleBtn">☰</button>
+
+<div class="hint">Click &amp; drag to create turbulence • Scroll to zoom noise</div>
+
+<script>
+// --- Simplex Noise Implementation ---
+const SimplexNoise = (() => {
+  const F2 = 0.5 * (Math.sqrt(3) - 1);
+  const G2 = (3 - Math.sqrt(3)) / 6;
+  const grad3 = [[1,1],[−1,1],[1,−1],[−1,−1],[1,0],[−1,0],[0,1],[0,−1]].length ?
+    [[1,1],[-1,1],[1,-1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]] : [];
+  class SN {
+    constructor(seed) {
+      this.p = new Uint8Array(512);
+      const perm = new Uint8Array(256);
+      for (let i = 0; i < 256; i++) perm[i] = i;
+      let s = seed || Math.random() * 65536;
+      for (let i = 255; i > 0; i--) {
+        s = (s * 16807 + 0) % 2147483647;
+        const j = s % (i + 1);
+        [perm[i], perm[j]] = [perm[j], perm[i]];
+      }
+      for (let i = 0; i < 512; i++) this.p[i] = perm[i & 255];
+    }
+    noise2D(xin, yin) {
+      let n0, n1, n2;
+      const s = (xin + yin) * F2;
+      const i = Math.floor(xin + s);
+      const j = Math.floor(yin + s);
+      const t = (i + j) * G2;
+      const X0 = i - t, Y0 = j - t;
+      const x0 = xin - X0, y0 = yin - Y0;
+      let i1, j1;
+      if (x0 > y0) { i1 = 1; j1 = 0; }
+      else { i1 = 0; j1 = 1; }
+      const x1 = x0 - i1 + G2, y1 = y0 - j1 + G2;
+      const x2 = x0 - 1 + 2 * G2, y2 = y0 - 1 + 2 * G2;
+      const ii = i & 255, jj = j & 255;
+      let t0 = 0.5 - x0 * x0 - y0 * y0;
+      if (t0 < 0) n0 = 0;
+      else { t0 *= t0; const g = grad3[this.p[ii + this.p[jj]] % 8]; n0 = t0 * t0 * (g[0] * x0 + g[1] * y0); }
+      let t1 = 0.5 - x1 * x1 - y1 * y1;
+      if (t1 < 0) n1 = 0;
+      else { t1 *= t1; const g = grad3[this.p[ii + i1 + this.p[jj + j1]] % 8]; n1 = t1 * t1 * (g[0] * x1 + g[1] * y1); }
+      let t2 = 0.5 - x2 * x2 - y2 * y2;
+      if (t2 < 0) n2 = 0;
+      else { t2 *= t2; const g = grad3[this.p[ii + 1 + this.p[jj + 1]] % 8]; n2 = t2 * t2 * (g[0] * x2 + g[1] * y2); }
+      return 70 * (n0 + n1 + n2);
+    }
+  }
+  return SN;
+})();
+
+// --- Perlin Noise ---
+const PerlinNoise = (() => {
+  const perm = new Uint8Array(512);
+  const p = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) p[i] = i;
+  let s = 42;
+  for (let i = 255; i > 0; i--) {
+    s = (s * 16807) % 2147483647;
+    const j = s % (i + 1);
+    [p[i], p[j]] = [p[j], p[i]];
+  }
+  for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+
+  const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+  const lerp = (a, b, t) => a + t * (b - a);
+  const grad = (h, x, y) => {
+    const k = h & 3;
+    return ((k & 1) ? -x : x) + ((k & 2) ? -y : y);
+  };
+
+  function perlin2D(x, y) {
+    const X = Math.floor(x) & 255, Y = Math.floor(y) & 255;
+    x -= Math.floor(x); y -= Math.floor(y);
+    const u = fade(x), v = fade(y);
+    const A = perm[X] + Y, B = perm[X + 1] + Y;
+    return lerp(
+      lerp(grad(perm[A], x, y), grad(perm[B], x - 1, y), u),
+      lerp(grad(perm[A + 1], x, y - 1), grad(perm[B + 1], x - 1, y - 1), u),
+      v
+    );
+  }
+  return perlin2D;
+})();
+
+// --- App ---
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Noise instance
+const noiseGen = new SimplexNoise(Math.random() * 65536);
+
+// Parameters
+const params = {
+  particleCount: 800,
+  speed: 1.0,
+  noiseScale: 0.005,
+  fadeRate: 0.02,
+  lineWidth: 1.2,
+  colorMode: 'spectrum',
+  noiseType: 'perlin',
+};
+
+// Particles
+class Particle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random() * W;
+    this.y = Math.random() * H;
+    this.age = 0;
+    this.maxAge = 200 + Math.random() * 400;
+  }
+  update() {
+    const scale = params.noiseScale;
+    const angle = params.noiseType === 'simplex'
+      ? noiseGen.noise2D(this.x * scale, this.y * scale) * Math.PI * 4
+      : PerlinNoise(this.x * scale, this.y * scale) * Math.PI * 4;
+    const spd = params.speed;
+    this.x += Math.cos(angle) * spd;
+    this.y += Math.sin(angle) * spd;
+    this.age++;
+    if (this.x < -10 || this.x > W + 10 || this.y < -10 || this.y > H + 10 || this.age > this.maxAge) {
+      this.reset();
+    }
+  }
+}
+
+let particles = [];
+function initParticles() {
+  particles = [];
+  for (let i = 0; i < params.particleCount; i++) {
+    particles.push(new Particle());
+  }
+}
+initParticles();
+
+// Color functions
+const colors = {
+  spectrum(t) {
+    const h = (t * 360) % 360;
+    return `hsla(${h}, 80%, 60%, 0.9)`;
+  },
+  ocean(t) {
+    const r = Math.floor(20 + t * 40);
+    const g = Math.floor(80 + t * 120);
+    const b = Math.floor(180 + t * 75);
+    return `rgba(${r},${g},${b},0.9)`;
+  },
+  fire(t) {
+    const r = Math.floor(200 + t * 55);
+    const g = Math.floor(50 + t * 150);
+    const b = Math.floor(t * 60);
+    return `rgba(${r},${g},${b},0.9)`;
+  },
+  aurora(t) {
+    const r = Math.floor(30 + t * 100);
+    const g = Math.floor(180 + t * 40);
+    const b = Math.floor(120 + (1 - Math.abs(t - 0.5) * 2) * 135);
+    return `rgba(${r},${g},${b},0.9)`;
+  },
+  neon(t) {
+    const h = t > 0.5 ? 180 + t * 180 : t * 180;
+    return `hsla(${h % 360}, 100%, 65%, 0.95)`;
+  },
+  mono(t) {
+    const v = Math.floor(100 + t * 155);
+    return `rgba(${v},${v},${v},0.9)`;
+  },
+};
+
+// Mouse / touch interaction
+let mouseDown = false;
+let mouseX = 0, mouseY = 0;
+let turbulenceRadius = 150;
+
+canvas.addEventListener('mousedown', (e) => { mouseDown = true; mouseX = e.clientX; mouseY = e.clientY; });
+canvas.addEventListener('mousemove', (e) => { mouseX = e.clientX; mouseY = e.clientY; });
+canvas.addEventListener('mouseup', () => { mouseDown = false; });
+canvas.addEventListener('mouseleave', () => { mouseDown = false; });
+
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  mouseDown = true;
+  mouseX = e.touches[0].clientX;
+  mouseY = e.touches[0].clientY;
+}, { passive: false });
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  mouseX = e.touches[0].clientX;
+  mouseY = e.touches[0].clientY;
+}, { passive: false });
+canvas.addEventListener('touchend', () => { mouseDown = false; });
+
+// Main loop
+let hueOffset = 0;
+function animate() {
+  // Fade
+  ctx.fillStyle = `rgba(10,10,15,${params.fadeRate})`;
+  ctx.fillRect(0, 0, W, H);
+
+  const colFn = colors[params.colorMode];
+
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i];
+    const prevX = p.x, prevY = p.y;
+    p.update();
+
+    // Turbulence near mouse
+    if (mouseDown) {
+      const dx = p.x - mouseX, dy = p.y - mouseY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < turbulenceRadius) {
+        const force = (1 - dist / turbulenceRadius) * 3;
+        p.x += dx / dist * force;
+        p.y += dy / dist * force;
+      }
+    }
+
+    const t = (p.age / p.maxAge + hueOffset) % 1;
+    ctx.strokeStyle = colFn(t);
+    ctx.lineWidth = params.lineWidth;
+    ctx.beginPath();
+    ctx.moveTo(prevX, prevY);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  }
+
+  hueOffset = (hueOffset + 0.001) % 1;
+  requestAnimationFrame(animate);
+}
+
+// Fade in
+ctx.fillStyle = '#0a0a0f';
+ctx.fillRect(0, 0, W, H);
+animate();
+
+// --- UI Bindings ---
+const $ = id => document.getElementById(id);
+
+function bindSlider(id, param, displayId, transform, format) {
+  const el = $(id);
+  const disp = $(displayId);
+  el.addEventListener('input', () => {
+    const raw = parseFloat(el.value);
+    params[param] = transform ? transform(raw) : raw;
+    disp.textContent = format ? format(params[param]) : params[param];
+    if (param === 'particleCount') {
+      const diff = params.particleCount - particles.length;
+      if (diff > 0) for (let i = 0; i < diff; i++) particles.push(new Particle());
+      else if (diff < 0) particles.splice(params.particleCount);
+    }
+  });
+}
+
+bindSlider('pCount', 'particleCount', 'vCount', null, v => v);
+bindSlider('speed', 'speed', 'vSpeed', null, v => v.toFixed(1));
+bindSlider('noiseScale', 'noiseScale', 'vNoise', null, v => v.toFixed(3));
+bindSlider('fadeRate', 'fadeRate', 'vFade', null, v => v.toFixed(3));
+bindSlider('lineWidth', 'lineWidth', 'vWidth', null, v => v.toFixed(1));
+
+$('colorMode').addEventListener('change', e => { params.colorMode = e.target.value; });
+$('noiseType').addEventListener('change', e => { params.noiseType = e.target.value; });
+
+$('resetBtn').addEventListener('click', () => {
+  ctx.fillStyle = '#0a0a0f';
+  ctx.fillRect(0, 0, W, H);
+  hueOffset = 0;
+  initParticles();
+});
+
+$('screenshotBtn').addEventListener('click', () => {
+  const link = document.createElement('a');
+  link.download = `flow-field-${Date.now()}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+});
+
+$('collapseBtn').addEventListener('click', () => {
+  $('controls').classList.add('collapsed');
+});
+$('toggleBtn').addEventListener('click', () => {
+  $('controls').classList.remove('collapsed');
+});
+
+// Scroll to adjust noise scale
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const slider = $('noiseScale');
+  let val = parseFloat(slider.value) + (e.deltaY > 0 ? 0.0005 : -0.0005);
+  val = Math.max(0.001, Math.min(0.03, val));
+  slider.value = val;
+  slider.dispatchEvent(new Event('input'));
+}, { passive: false });
+</script>
+</body>
+</html>

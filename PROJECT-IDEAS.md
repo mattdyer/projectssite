@@ -32,7 +32,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [x] **Mandala Generator** — Symmetrical art tool where you draw one stroke and it mirrors.
 - [x] **Fractal Explorer** — Interactive Mandelbrot/Julia set zoom and pan.
 - [ ] **Waveform Synth** — Draw a waveform shape and hear it as sound.
-- [ ] **Generative Art — Flow Fields** — Particles flowing along a noise-based vector field.
+- [x] **Generative Art — Flow Fields** — Particles flowing along a noise-based vector field.
 - [ ] **Color Mixer** — Blend colors interactively using sliders or drag-to-mix.
 - [ ] **Rotoscope** — Upload an image, trace over it with draggable lines/curves.
 - [x] **Maze Generator** — Auto-generate a maze, user can solve it by navigating.
