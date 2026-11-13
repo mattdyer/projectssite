@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waveform Synth</title>
+<style>
+  :root {
+    --bg: #0a0a1a;
+    --panel: #1a1a2e;
+    --accent: #00e5ff;
+    --accent2: #7c4dff;
+    --text: #e0e0e0;
+    --dim: #666;
+    --btn: #2a2a4e;
+    --btn-hover: #3a3a6e;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    overflow-x: hidden;
+  }
+  h1 {
+    font-size: clamp(1.4rem, 4vw, 2.2rem);
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+  .subtitle { color: var(--dim); font-size: 0.9rem; margin-bottom: 20px; text-align: center; }
+  .container {
+    width: 100%;
+    max-width: 700px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  canvas {
+    width: 100%;
+    height: 220px;
+    background: var(--panel);
+    border-radius: 12px;
+    border: 1px solid #2a2a4e;
+    cursor: crosshair;
+    touch-action: none;
+  }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+  }
+  button {
+    background: var(--btn);
+    color: var(--text);
+    border: 1px solid #3a3a5e;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button.play { border-color: var(--accent); color: var(--accent); }
+  button.stop { border-color: #ff5252; color: #ff5252; }
+  select, input[type=range] {
+    background: var(--btn);
+    color: var(--text);
+    border: 1px solid #3a3a5e;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+  }
+  select { cursor: pointer; }
+  .slider-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--dim);
+  }
+  .slider-group input[type=range] {
+    width: 100px;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #3a3a5e;
+    border-radius: 3px;
+    outline: none;
+  }
+  .slider-group input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+  .info {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--dim);
+    margin-top: 4px;
+  }
+  .presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+  }
+  .presets button { padding: 6px 14px; font-size: 0.85rem; }
+  .waveform-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--dim);
+    padding: 0 4px;
+  }
+</style>
+</head>
+<body>
+<h1>🎵 Waveform Synth</h1>
+<p class="subtitle">Draw a shape on the canvas, then hear it as a synthesized sound</p>
+
+<div class="container">
+  <canvas id="canvas"></canvas>
+
+  <div class="presets">
+    <button onclick="loadPreset('sine')">Sine</button>
+    <button onclick="loadPreset('square')">Square</button>
+    <button onclick="loadPreset('sawtooth')">Sawtooth</button>
+    <button onclick="loadPreset('triangle')">Triangle</button>
+    <button onclick="loadPreset('custom')">Random</button>
+  </div>
+
+  <div class="controls">
+    <button class="play" id="playBtn" onclick="playWaveform()">▶ Play</button>
+    <button class="stop" id="stopBtn" onclick="stopWaveform()">⏹ Stop</button>
+    <div class="slider-group">
+      <label for="freq">Freq:</label>
+      <input type="range" id="freq" min="80" max="2000" value="440" oninput="updateFreq(this.value)">
+      <span id="freqLabel">440 Hz</span>
+    </div>
+    <div class="slider-group">
+      <label for="vol">Vol:</label>
+      <input type="range" id="vol" min="0" max="100" value="50" oninput="updateVol(this.value)">
+      <span id="volLabel">50%</span>
+    </div>
+    <select id="shapeSelect" onchange="updateShape(this.value)">
+      <option value="soft">Soft (ease)</option>
+      <option value="hard">Hard edges</option>
+    </select>
+  </div>
+
+  <div class="waveform-label">
+    <span>−1.0</span><span>0.0</span><span>+1.0</span>
+  </div>
+
+  <p class="info">Click and drag on the canvas to draw. Touch supported.</p>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let audioCtx = null;
+let analyser = null;
+let animId = null;
+let isPlaying = false;
+let drawPoints = [];
+let isDrawing = false;
+let freq = 440;
+let volume = 0.5;
+let edgeType = 'soft';
+
+function resize() {
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * window.devicePixelRatio;
+  canvas.height = rect.height * window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  drawWaveform();
+}
+window.addEventListener('resize', resize);
+resize();
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+  const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+  return { x, y };
+}
+
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+canvas.addEventListener('mousedown', e => { isDrawing = true; initAudio(); const p = getPos(e); drawPoints = [{...p, val: normalizeY(p.y)}]; drawWaveform(); });
+canvas.addEventListener('mousemove', e => { if (!isDrawing) return; const p = getPos(e); drawPoints.push({...p, val: normalizeY(p.y)}); drawWaveform(); });
+canvas.addEventListener('mouseup', () => { isDrawing = false; });
+canvas.addEventListener('mouseleave', () => { isDrawing = false; });
+
+canvas.addEventListener('touchstart', e => { e.preventDefault(); isDrawing = true; initAudio(); const p = getPos(e); drawPoints = [{...p, val: normalizeY(p.y)}]; drawWaveform(); }, {passive:false});
+canvas.addEventListener('touchmove', e => { e.preventDefault(); if (!isDrawing) return; const p = getPos(e); drawPoints.push({...p, val: normalizeY(p.y)}); drawWaveform(); }, {passive:false});
+canvas.addEventListener('touchend', e => { e.preventDefault(); isDrawing = false; }, {passive:false});
+
+function normalizeY(y) {
+  const rect = canvas.getBoundingClientRect();
+  return 1 - (y / rect.height);
+}
+
+function drawWaveform() {
+  const w = canvas.width / window.devicePixelRatio;
+  const h = canvas.height / window.devicePixelRatio;
+  ctx.clearRect(0, 0, w, h);
+
+  // Grid lines
+  ctx.strokeStyle = '#1a1a2e';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = (h / 4) * i;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+  // Center line
+  ctx.strokeStyle = '#333';
+  ctx.beginPath(); ctx.moveTo(0, h/2); ctx.lineTo(w, h/2); ctx.stroke();
+
+  if (drawPoints.length < 2) {
+    // Draw placeholder
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath(); ctx.moveTo(0, h/2); ctx.lineTo(w, h/2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#444';
+    ctx.font = '14px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('Draw your waveform here', w/2, h/2 + 5);
+    return;
+  }
+
+  // Smooth the waveform
+  let smooth = smoothPath(drawPoints, w);
+
+  // Draw filled waveform
+  const grad = ctx.createLinearGradient(0, 0, w, 0);
+  grad.addColorStop(0, '#00e5ff');
+  grad.addColorStop(0.5, '#7c4dff');
+  grad.addColorStop(1, '#00e5ff');
+
+  ctx.beginPath();
+  ctx.moveTo(0, h);
+  for (const p of smooth) ctx.lineTo(p.x, p.y);
+  ctx.lineTo(w, h);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(0, 229, 255, 0.08)';
+  ctx.fill();
+
+  // Draw the line
+  ctx.beginPath();
+  ctx.moveTo(0, smooth[0].y);
+  for (const p of smooth) ctx.lineTo(p.x, p.y);
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 2.5;
+  ctx.shadowColor = '#00e5ff';
+  ctx.shadowBlur = 8;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Draw points
+  for (const p of drawPoints) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#00e5ff';
+    ctx.fill();
+  }
+}
+
+function smoothPath(points, w) {
+  if (edgeType === 'soft') {
+    // Catmull-Rom spline interpolation for smooth curves
+    let result = [];
+    const samplesPerSegment = 20;
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[Math.max(0, i - 1)];
+      const p1 = points[i];
+      const p2 = points[i + 1];
+      const p3 = points[Math.min(points.length - 1, i + 2)];
+      for (let s = 0; s <= samplesPerSegment; s++) {
+        const t = s / samplesPerSegment;
+        const t2 = t * t, t3 = t2 * t;
+        const x = (p1.x * (2*t2 - t3 + 1) + p0.x * (-2*t2 + t3 + t) + p2.x * (t3 - t2) + p3.x * (-2*t3 + 3*t2)) / 2;
+        const y = (p1.y * (2*t2 - t3 + 1) + p0.y * (-2*t2 + t3 + t) + p2.y * (t3 - t2) + p3.y * (-2*t3 + 3*t2)) / 2;
+        result.push({x, y});
+      }
+    }
+    return result;
+  } else {
+    // Linear interpolation
+    return points.map(p => ({x: p.x, y: p.y}));
+  }
+}
+
+function sampleWaveform(numSamples) {
+  const w = canvas.width / window.devicePixelRatio;
+  const h = canvas.height / window.devicePixelRatio;
+  if (drawPoints.length < 2) {
+    return new Float32Array(numSamples);
+  }
+  const smooth = smoothPath(drawPoints, w);
+  const samples = new Float32Array(numSamples);
+  for (let i = 0; i < numSamples; i++) {
+    const x = (i / numSamples) * w;
+    // Find position in smooth array
+    let idx = Math.floor((i / numSamples) * (smooth.length - 1));
+    samples[i] = smooth[idx].y;
+  }
+  return samples;
+}
+
+function playWaveform() {
+  initAudio();
+  stopWaveform();
+
+  const samples = sampleWaveform(4096);
+  const buffer = audioCtx.createBuffer(1, samples.length, audioCtx.sampleRate);
+  buffer.getChannelData(0).set(samples);
+
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+  source.loop = true;
+
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 256;
+
+  const gain = audioCtx.createGain();
+  gain.gain.value = volume;
+
+  source.connect(gain);
+  gain.connect(analyser);
+  analyser.connect(audioCtx.destination);
+  source.start();
+
+  isPlaying = true;
+  visualize();
+}
+
+function stopWaveform() {
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+  if (audioCtx && audioCtx.state !== 'closed') {
+    audioCtx.close().then(() => { audioCtx = null; }).catch(() => {});
+  }
+  isPlaying = false;
+  drawWaveform();
+}
+
+function visualize() {
+  if (!isPlaying || !analyser) return;
+  const w = canvas.width / window.devicePixelRatio;
+  const h = canvas.height / window.devicePixelRatio;
+
+  const bufferLength = analyser.frequencyBinCount;
+  const dataArray = new Uint8Array(bufferLength);
+  analyser.getByteTimeDomainData(dataArray);
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Background
+  ctx.fillStyle = '#0a0a1a';
+  ctx.fillRect(0, 0, w, h);
+
+  // Grid
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = (h / 4) * i;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+
+  // Live waveform
+  const grad = ctx.createLinearGradient(0, 0, w, 0);
+  grad.addColorStop(0, '#00e5ff');
+  grad.addColorStop(0.5, '#7c4dff');
+  grad.addColorStop(1, '#00e5ff');
+
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = grad;
+  ctx.shadowColor = '#00e5ff';
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+
+  const sliceWidth = w / bufferLength;
+  let x = 0;
+  for (let i = 0; i < bufferLength; i++) {
+    const v = dataArray[i] / 128.0;
+    const y = v * h / 2;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+    x += sliceWidth;
+  }
+  ctx.lineTo(w, h/2);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Frequency bars in background
+  const freqData = new Uint8Array(bufferLength);
+  analyser.getByteFrequencyData(freqData);
+  const barW = w / 64;
+  for (let i = 0; i < 64; i++) {
+    const barH = (freqData[i] / 255) * h * 0.4;
+    ctx.fillStyle = `rgba(124, 77, 255, ${freqData[i] / 510})`;
+    ctx.fillRect(i * barW, h - barH, barW - 1, barH);
+  }
+
+  animId = requestAnimationFrame(visualize);
+}
+
+function updateFreq(val) {
+  freq = parseInt(val);
+  document.getElementById('freqLabel').textContent = val + ' Hz';
+}
+
+function updateVol(val) {
+  volume = parseInt(val) / 100;
+  document.getElementById('volLabel').textContent = val + '%';
+}
+
+function updateShape(val) {
+  edgeType = val;
+  drawWaveform();
+}
+
+function loadPreset(type) {
+  const w = canvas.width / window.devicePixelRatio;
+  const h = canvas.height / window.devicePixelRatio;
+  const mid = h / 2;
+  drawPoints = [];
+
+  if (type === 'sine') {
+    for (let i = 0; i <= 64; i++) {
+      drawPoints.push({
+        x: (i / 64) * w,
+        val: Math.sin((i / 64) * Math.PI * 2)
+      });
+    }
+  } else if (type === 'square') {
+    for (let i = 0; i <= 64; i++) {
+      drawPoints.push({
+        x: (i / 64) * w,
+        val: (i / 64) < 0.5 ? 0.7 : -0.7
+      });
+    }
+  } else if (type === 'sawtooth') {
+    for (let i = 0; i <= 64; i++) {
+      drawPoints.push({
+        x: (i / 64) * w,
+        val: 1 - (2 * i / 64)
+      });
+    }
+  } else if (type === 'triangle') {
+    for (let i = 0; i <= 64; i++) {
+      drawPoints.push({
+        x: (i / 64) * w,
+        val: (i / 32) % 2 < 1 ? (i / 32) % 1 : 2 - (i / 32) % 1
+      });
+    }
+    // Normalize to +/-1
+    drawPoints = drawPoints.map(p => ({...p, val: p.val * 0.7}));
+  } else if (type === 'custom') {
+    let val = (Math.random() - 0.5) * 1.6;
+    for (let i = 0; i <= 64; i++) {
+      val += (Math.random() - 0.5) * 0.3;
+      val = Math.max(-1, Math.min(1, val));
+      drawPoints.push({
+        x: (i / 64) * w,
+        val: val
+      });
+    }
+  }
+
+  drawWaveform();
+}
+
+// Initialize with empty state
+drawWaveform();
+</script>
+</body>
+</html>
