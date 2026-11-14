@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Pendulum Simulator</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0f0f1a;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+  h1 {
+    font-size: 1.6rem;
+    margin: 16px 0 4px;
+    color: #7eb8ff;
+    text-align: center;
+  }
+  .subtitle { font-size: 0.85rem; color: #888; margin-bottom: 10px; }
+  #canvas-wrap {
+    position: relative;
+    width: min(95vw, 700px);
+    height: min(55vh, 420px);
+    margin: 8px auto;
+  }
+  canvas {
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+    background: radial-gradient(ellipse at 50% 20%, #1a1a3a 0%, #0f0f1a 100%);
+    border: 1px solid #2a2a4a;
+  }
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 10px;
+    width: min(95vw, 700px);
+    padding: 12px;
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+  .ctrl-group {
+    background: #1a1a2e;
+    border-radius: 10px;
+    padding: 10px 14px;
+    border: 1px solid #2a2a4a;
+  }
+  .ctrl-group label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+  }
+  .ctrl-group label span.val { color: #7eb8ff; font-weight: bold; }
+  input[type=range] {
+    width: 100%;
+    accent-color: #7eb8ff;
+    cursor: pointer;
+  }
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    width: min(95vw, 700px);
+    padding: 6px 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  button {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: transform 0.1s, background 0.2s;
+  }
+  button:active { transform: scale(0.95); }
+  #btn-pause { background: #ff9800; color: #111; }
+  #btn-reset { background: #e53935; color: #fff; }
+  #btn-trail { background: #43a047; color: #fff; }
+  .energy-bar-wrap {
+    width: min(95vw, 700px);
+    padding: 0 12px 8px;
+  }
+  .energy-bar-wrap .bar {
+    display: flex;
+    height: 18px;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-top: 4px;
+    background: #111;
+  }
+  .bar-ke { background: #ff5252; transition: width 0.05s; }
+  .bar-pe { background: #448aff; transition: width 0.05s; }
+  .legend {
+    display: flex; gap: 16px; font-size: 0.8rem; margin-top: 4px;
+    justify-content: center;
+  }
+  .legend span { display: flex; align-items: center; gap: 4px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
+  .stats {
+    display: flex; gap: 18px; font-size: 0.78rem; color: #aaa;
+    width: min(95vw, 700px); padding: 2px 12px 6px; flex-wrap: wrap;
+    justify-content: center;
+  }
+  .info {
+    font-size: 0.72rem; color: #666; text-align: center;
+    padding: 4px 12px 14px; width: min(95vw, 700px);
+  }
+  @media (max-width: 500px) {
+    h1 { font-size: 1.2rem; }
+    .controls { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<h1>🔬 Pendulum Simulator</h1>
+<p class="subtitle">Adjust parameters &amp; watch energy exchange in real time</p>
+
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+</div>
+
+<div class="energy-bar-wrap">
+  <div style="font-size:0.82rem;text-align:center;">Energy Distribution</div>
+  <div class="bar">
+    <div class="bar-ke" id="bar-ke" style="width:0%"></div>
+    <div class="bar-pe" id="bar-pe" style="width:100%"></div>
+  </div>
+  <div class="legend">
+    <span><i style="background:#ff5252"></i> Kinetic</span>
+    <span><i style="background:#448aff"></i> Potential</span>
+  </div>
+</div>
+
+<div class="stats" id="stats">
+  <span>Angle: <b id="s-angle">45.0°</b></span>
+  <span>Velocity: <b id="s-vel">0.0 rad/s</b></span>
+  <span>Period: <b id="s-period">—</b></span>
+  <span>KE: <b id="s-ke">0</b></span>
+  <span>PE: <b id="s-pe">0</b></span>
+  <span>Total: <b id="s-total">0</b></span>
+</div>
+
+<div class="btn-row">
+  <button id="btn-pause">⏸ Pause</button>
+  <button id="btn-reset">🔄 Reset</button>
+  <button id="btn-trail">🌈 Trail ON</button>
+</div>
+
+<div class="info">
+  Drag the bob to set initial angle • Adjust sliders to change physics
+</div>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <label>Length (m) <span class="val" id="v-len">1.00</span></label>
+    <input type="range" id="len" min="0.2" max="3.0" step="0.05" value="1.0">
+  </div>
+  <div class="ctrl-group">
+    <label>Mass (kg) <span class="val" id="v-mass">1.00</span></label>
+    <input type="range" id="mass" min="0.1" max="5.0" step="0.1" value="1.0">
+  </div>
+  <div class="ctrl-group">
+    <label>Gravity (m/s²) <span class="val" id="v-grav">9.81</span></label>
+    <input type="range" id="grav" min="1.0" max="25.0" step="0.1" value="9.81">
+  </div>
+  <div class="ctrl-group">
+    <label>Damping <span class="val" id="v-damp">0.00</span></label>
+    <input type="range" id="damp" min="0.0" max="0.5" step="0.01" value="0.0">
+  </div>
+  <div class="ctrl-group">
+    <label>Initial Angle (°) <span class="val" id="v-angle">45</span></label>
+    <input type="range" id="angle" min="-90" max="90" step="1" value="45">
+  </div>
+  <div class="ctrl-group">
+    <label>Time Scale <span class="val" id="v-time">1.00</span></label>
+    <input type="range" id="time" min="0.1" max="3.0" step="0.1" value="1.0">
+  </div>
+</div>
+
+<script>
+// ── Canvas Setup ──
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  const wrap = document.getElementById('canvas-wrap');
+  const dpr = window.devicePixelRatio || 1;
+  W = wrap.clientWidth;
+  H = wrap.clientHeight;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ── State ──
+let theta = 45 * Math.PI / 180;
+let omega = 0;
+let paused = false;
+let trailOn = true;
+const trail = [];
+const MAX_TRAIL = 300;
+let lastTime = performance.now();
+
+// ── Controls ──
+const ctrl = {
+  len:    document.getElementById('len'),
+  mass:   document.getElementById('mass'),
+  grav:   document.getElementById('grav'),
+  damp:   document.getElementById('damp'),
+  angle:  document.getElementById('angle'),
+  time:   document.getElementById('time'),
+};
+const vEl = {
+  len:    document.getElementById('v-len'),
+  mass:   document.getElementById('v-mass'),
+  grav:   document.getElementById('v-grav'),
+  damp:   document.getElementById('v-damp'),
+  angle:  document.getElementById('v-angle'),
+  time:   document.getElementById('v-time'),
+};
+
+function getParams() {
+  return {
+    L: +ctrl.len.value,
+    m: +ctrl.mass.value,
+    g: +ctrl.grav.value,
+    b: +ctrl.damp.value,
+    dt: +(ctrl.time.value) * 1/60,
+  };
+}
+
+function syncUI() {
+  vEl.len.textContent = (+ctrl.len.value).toFixed(2);
+  vEl.mass.textContent = (+ctrl.mass.value).toFixed(2);
+  vEl.grav.textContent = (+ctrl.grav.value).toFixed(2);
+  vEl.damp.textContent = (+ctrl.damp.value).toFixed(2);
+  vEl.angle.textContent = Math.round(ctrl.angle.value);
+  vEl.time.textContent = (+ctrl.time.value).toFixed(2);
+}
+Object.values(ctrl).forEach(el => el.addEventListener('input', syncUI));
+syncUI();
+
+// ── Buttons ──
+document.getElementById('btn-pause').addEventListener('click', function() {
+  paused = !paused;
+  this.textContent = paused ? '▶ Play' : '⏸ Pause';
+});
+document.getElementById('btn-reset').addEventListener('click', () => {
+  theta = +ctrl.angle.value * Math.PI / 180;
+  omega = 0;
+  trail.length = 0;
+});
+document.getElementById('btn-trail').addEventListener('click', function() {
+  trailOn = !trailOn;
+  this.textContent = trailOn ? '🌈 Trail ON' : '🌈 Trail OFF';
+  if (!trailOn) trail.length = 0;
+});
+
+// ── Drag to set angle ──
+let dragging = false;
+function getAngleFromPointer(ex, ey) {
+  const pivotX = W / 2;
+  const pivotY = H * 0.18;
+  const dx = ex - pivotX;
+  const dy = ey - pivotY;
+  return Math.atan2(dx, dy);
+}
+function onDown(ex, ey) {
+  const pivotX = W / 2, pivotY = H * 0.18;
+  const bobX = pivotX + Math.sin(theta) * 120;
+  const bobY = pivotY + Math.cos(theta) * 120;
+  const d = Math.hypot(ex - bobX, ey - bobY);
+  if (d < 50) { dragging = true; omega = 0; trail.length = 0; }
+}
+canvas.addEventListener('mousedown', e => {
+  const r = canvas.getBoundingClientRect();
+  onDown(e.clientX - r.left, e.clientY - r.top);
+});
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const r = canvas.getBoundingClientRect();
+  const t = e.touches[0];
+  onDown(t.clientX - r.left, t.clientY - r.top);
+}, { passive: false });
+function onMove(ex, ey) {
+  if (!dragging) return;
+  const newTheta = getAngleFromPointer(ex, ey);
+  theta = Math.max(-Math.PI * 0.48, Math.min(Math.PI * 0.48, newTheta));
+  omega = 0;
+}
+canvas.addEventListener('mousemove', e => {
+  const r = canvas.getBoundingClientRect();
+  onMove(e.clientX - r.left, e.clientY - r.top);
+});
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const r = canvas.getBoundingClientRect();
+  const t = e.touches[0];
+  onMove(t.clientX - r.left, t.clientY - r.top);
+}, { passive: false });
+canvas.addEventListener('mouseup', () => dragging = false);
+canvas.addEventListener('touchend', () => dragging = false);
+
+// ── Physics ──
+function step(dt) {
+  const p = getParams();
+  // RK4 integration for damped pendulum
+  const f = (th, om) => [om, -(p.g / p.L) * Math.sin(th) - p.b * om];
+  for (let i = 0; i < 4; i++) {
+    const [k1t, k1o] = f(theta, omega);
+    const [k2t, k2o] = f(theta + k1t*dt/2, omega + k1o*dt/2);
+    const [k3t, k3o] = f(theta + k2t*dt/2, omega + k2o*dt/2);
+    const [k4t, k4o] = f(theta + k3t*dt, omega + k3o*dt);
+    theta += dt/6 * (k1t + 2*k2t + 2*k3t + k4t);
+    omega += dt/6 * (k1o + 2*k2o + 2*k3o + k4o);
+  }
+  // Period estimate (small-angle approximation, updated dynamically)
+  if (Math.abs(omega) < 0.01 && trail.length < 5) {
+    // not used for display during swing
+  }
+}
+
+// ── Trail colors ──
+function trailColor(t) {
+  // Blue → cyan → green → yellow → red
+  const hue = 240 - t * 240;
+  return `hsl(${hue}, 90%, 60%)`;
+}
+
+// ── Draw ──
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  const p = getParams();
+  const pivotX = W / 2;
+  const pivotY = H * 0.18;
+  const rodLen = Math.min(W, H) * 0.35 * (p.L / 2.0);
+  const bobX = pivotX + Math.sin(theta) * rodLen;
+  const bobY = pivotY + Math.cos(theta) * rodLen;
+  const bobR = 8 + p.m * 4;
+
+  // Trail
+  if (trailOn && !dragging) {
+    trail.push({ x: bobX, y: bobY, t: performance.now() });
+    if (trail.length > MAX_TRAIL) trail.shift();
+  }
+  if (trail.length > 1) {
+    for (let i = 1; i < trail.length; i++) {
+      const age = (performance.now() - trail[i].t) / 3000;
+      const alpha = Math.max(0, 1 - age);
+      if (alpha <= 0) continue;
+      ctx.beginPath();
+      ctx.moveTo(trail[i-1].x, trail[i-1].y);
+      ctx.lineTo(trail[i].x, trail[i].y);
+      ctx.strokeStyle = trailColor(1 - i / trail.length).replace(')', `, ${alpha})`).replace('hsl', 'hsla');
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+    }
+  }
+
+  // Pivot mount
+  ctx.beginPath();
+  ctx.arc(pivotX, pivotY, 6, 0, Math.PI * 2);
+  ctx.fillStyle = '#888';
+  ctx.fill();
+  ctx.strokeStyle = '#aaa';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Rod
+  ctx.beginPath();
+  ctx.moveTo(pivotX, pivotY);
+  ctx.lineTo(bobX, bobY);
+  ctx.strokeStyle = '#bbb';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Bob glow
+  const grad = ctx.createRadialGradient(bobX, bobY, bobR * 0.2, bobX, bobY, bobR * 2.5);
+  grad.addColorStop(0, 'rgba(126,184,255,0.35)');
+  grad.addColorStop(1, 'rgba(126,184,255,0)');
+  ctx.beginPath();
+  ctx.arc(bobX, bobY, bobR * 2.5, 0, Math.PI * 2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Bob
+  const bobGrad = ctx.createRadialGradient(bobX - bobR*0.3, bobY - bobR*0.3, 1, bobX, bobY, bobR);
+  bobGrad.addColorStop(0, '#a0d0ff');
+  bobGrad.addColorStop(1, '#4488cc');
+  ctx.beginPath();
+  ctx.arc(bobX, bobY, bobR, 0, Math.PI * 2);
+  ctx.fillStyle = bobGrad;
+  ctx.fill();
+  ctx.strokeStyle = '#7eb8ff';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Angle arc
+  const arcR = 30;
+  ctx.beginPath();
+  ctx.arc(pivotX, pivotY, arcR, Math.PI/2 - theta, Math.PI/2, theta > 0);
+  ctx.strokeStyle = 'rgba(126,184,255,0.4)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Angle label
+  const deg = (theta * 180 / Math.PI).toFixed(1);
+  ctx.fillStyle = '#7eb8ff';
+  ctx.font = '12px sans-serif';
+  ctx.fillText(`${deg}°`, pivotX + 35, pivotY + 5);
+
+  // Energy bars update
+  const KE = 0.5 * p.m * p.L * p.L * omega * omega;
+  const PE = p.m * p.g * p.L * (1 - Math.cos(theta));
+  const total = KE + PE || 1;
+  const kePct = (KE / total * 100).toFixed(1);
+  const pePct = (PE / total * 100).toFixed(1);
+
+  document.getElementById('bar-ke').style.width = kePct + '%';
+  document.getElementById('bar-pe').style.width = pePct + '%';
+  document.getElementById('s-angle').textContent = deg + '°';
+  document.getElementById('s-vel').textContent = omega.toFixed(2) + ' rad/s';
+  document.getElementById('s-ke').textContent = KE.toFixed(2) + ' J';
+  document.getElementById('s-pe').textContent = PE.toFixed(2) + ' J';
+  document.getElementById('s-total').textContent = total.toFixed(2) + ' J';
+  const T = 2 * Math.PI * Math.sqrt(p.L / p.g);
+  document.getElementById('s-period').textContent = T.toFixed(2) + ' s';
+}
+
+// ── Loop ──
+function loop(now) {
+  if (!paused && !dragging) {
+    const p = getParams();
+    step(p.dt);
+  }
+  lastTime = now;
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// ── Init ──
+syncUI();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
