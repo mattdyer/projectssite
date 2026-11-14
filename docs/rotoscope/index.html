@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Rotoscope — Trace Any Image</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --accent: #e94560;
+    --accent2: #0f3460;
+    --text: #eee;
+    --text-dim: #999;
+    --radius: 10px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+  }
+
+  /* Top toolbar */
+  #toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-bottom: 2px solid var(--accent2);
+    z-index: 10;
+  }
+  #toolbar button, #toolbar label {
+    background: var(--accent2);
+    color: var(--text);
+    border: 1px solid #1a1a4e;
+    padding: 6px 14px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  #toolbar button:hover, #toolbar label:hover { background: var(--accent); }
+  #toolbar button.active { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  #toolbar input[type="color"] {
+    width: 32px; height: 32px; border: none; border-radius: 6px; cursor: pointer; background: none;
+  }
+  #toolbar input[type="range"] { width: 80px; cursor: pointer; }
+  #toolbar .sep { width:1px; height:28px; background: #333; }
+  #toolbar .group { display:flex; align-items:center; gap:6px; }
+  #toolbar .label { font-size:11px; color: var(--text-dim); }
+  #fileInput { display:none; }
+
+  /* Canvas area */
+  #canvasWrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #111;
+  }
+  #canvasWrap canvas {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    cursor: crosshair;
+  }
+  #hint {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: var(--text-dim);
+    pointer-events: none;
+    max-width: 320px;
+  }
+  #hint h2 { color: var(--accent); margin-bottom:8px; font-size:22px; }
+  #hint p { font-size:14px; line-height:1.5; }
+
+  /* Layers panel */
+  #layersPanel {
+    position: absolute;
+    bottom: 10px; right: 10px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    min-width: 140px;
+    z-index: 10;
+    display: none;
+  }
+  #layersPanel h4 { margin-bottom:4px; font-size:12px; color: var(--text-dim); }
+  .layer-item {
+    display: flex; align-items:center; gap:6px;
+    padding: 4px 6px; border-radius: 6px; cursor: pointer; font-size: 12px;
+  }
+  .layer-item:hover { background: var(--accent2); }
+  .layer-item.active { background: var(--accent); }
+  .layer-item .dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .layer-item .remove { margin-left:auto; cursor:pointer; color:#f66; font-weight:bold; }
+
+  /* Modal overlay for export */
+  #modalOverlay {
+    position: fixed; inset:0; background: rgba(0,0,0,0.7);
+    display:none; justify-content:center; align-items:center; z-index:100;
+  }
+  #modalOverlay.show { display:flex; }
+  #modalBox {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 24px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+  }
+  #modalBox h3 { margin-bottom:12px; }
+  #modalBox textarea {
+    width:100%; height:150px; background:var(--bg); color:var(--text);
+    border:1px solid var(--accent2); border-radius:6px; padding:8px;
+    font-family:monospace; font-size:12px; resize:vertical;
+  }
+  #modalBox button {
+    margin-top:10px; padding:8px 20px; border:none; border-radius:6px;
+    background:var(--accent); color:var(--text); cursor:pointer; font-size:14px;
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    #toolbar { padding: 6px 8px; gap: 4px; }
+    #toolbar button, #toolbar label { padding: 5px 8px; font-size: 11px; }
+    #toolbar input[type="range"] { width: 50px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Toolbar -->
+<div id="toolbar">
+  <label for="fileInput" title="Upload an image to trace over">📁 Upload</label>
+  <input type="file" id="fileInput" accept="image/*">
+
+  <div class="sep"></div>
+
+  <div class="group">
+    <span class="label">Tool:</span>
+    <button id="btnPen" class="active" title="Freehand drawing">✏️ Pen</button>
+    <button id="btnLine" title="Straight line between two clicks">📏 Line</button>
+    <button id="btnBezier" title="Bézier curve: click to place control points">〰️ Curve</button>
+  </div>
+
+  <div class="sep"></div>
+
+  <div class="group">
+    <span class="label">Color</span>
+    <input type="color" id="colorPicker" value="#00ffcc">
+    <span class="label">Size</span>
+    <input type="range" id="sizeSlider" min="1" max="20" value="3">
+    <span id="sizeLabel" class="label">3px</span>
+  </div>
+
+  <div class="sep"></div>
+
+  <div class="group">
+    <button id="btnUndo" title="Undo last point">↩️</button>
+    <button id="btnRedo" title="Redo">↪️</button>
+    <button id="btnClear" title="Clear current path">🗑️</button>
+    <button id="btnLayers" title="Show/hide layers">📚 Layers</button>
+  </div>
+
+  <div class="sep"></div>
+
+  <button id="btnExportSVG" title="Export as SVG">💾 SVG</button>
+  <button id="btnExportPNG" title="Export trace as PNG">🖼️ PNG</button>
+  <button id="btnOpacity" title="Toggle image opacity">👁️ Opacity</button>
+</div>
+
+<!-- Canvas area -->
+<div id="canvasWrap">
+  <div id="hint">
+    <h2>🎨 Rotoscope</h2>
+    <p>Upload an image, then trace over it with lines, curves, or freehand drawing.<br>
+    Works with mouse &amp; touch.</p>
+  </div>
+  <canvas id="canvas"></canvas>
+</div>
+
+<!-- Layers panel -->
+<div id="layersPanel">
+  <h4>Paths</h4>
+  <div id="layersList"></div>
+</div>
+
+<!-- Export modal -->
+<div id="modalOverlay">
+  <div id="modalBox">
+    <h3 id="modalTitle">Export</h3>
+    <textarea id="modalContent" readonly></textarea>
+    <br>
+    <button id="modalCopy">Copy to Clipboard</button>
+    <button id="modalClose">Close</button>
+  </div>
+</div>
+
+<script>
+// ===== State =====
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('canvasWrap');
+const hint = document.getElementById('hint');
+const fileInput = document.getElementById('fileInput');
+
+let sourceImage = null;
+let imageDisplayScale = 1;
+let tool = 'pen'; // pen, line, bezier
+let drawColor = '#00ffcc';
+let lineWidth = 3;
+let imageOpacity = 1;
+
+// Paths: array of { name, color, width, points: [{x,y, cp1x,cp1y, cp2x,cp2y}] }
+let paths = [];
+let currentPath = null;
+let currentPoints = [];
+let undoStack = [];
+let redoStack = [];
+
+// Interaction state
+let isDrawing = false;
+let lineStart = null;
+let bezierPoints = [];
+let dragPoint = null;
+let dragOffset = {x:0, y:0};
+let selectedPathIdx = -1;
+let hoveredPoint = null;
+
+// ===== Resize =====
+function resize() {
+  const w = wrap.clientWidth;
+  const h = wrap.clientHeight;
+  canvas.width = w;
+  canvas.height = h;
+  render();
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ===== Image Upload =====
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => {
+      sourceImage = img;
+      // Scale image to fit canvas
+      const scaleX = canvas.width / img.width;
+      const scaleY = canvas.height / img.height;
+      imageDisplayScale = Math.min(scaleX, scaleY);
+      hint.style.display = 'none';
+      render();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+// Drag & drop
+wrap.addEventListener('dragover', (e) => { e.preventDefault(); wrap.style.outline = '3px dashed var(--accent)'; });
+wrap.addEventListener('dragleave', () => { wrap.style.outline = ''; });
+wrap.addEventListener('drop', (e) => {
+  e.preventDefault();
+  wrap.style.outline = '';
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        sourceImage = img;
+        const scaleX = canvas.width / img.width;
+        const scaleY = canvas.height / img.height;
+        imageDisplayScale = Math.min(scaleX, scaleY);
+        hint.style.display = 'none';
+        render();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+// ===== Tool Buttons =====
+document.getElementById('btnPen').onclick = () => setTool('pen');
+document.getElementById('btnLine').onclick = () => setTool('line');
+document.getElementById('btnBezier').onclick = () => setTool('bezier');
+
+function setTool(t) {
+  tool = t;
+  document.querySelectorAll('#toolbar button').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('btn' + t.charAt(0).toUpperCase() + t.slice(1));
+  if (btn) btn.classList.add('active');
+  bezierPoints = [];
+  canvas.style.cursor = t === 'pen' ? 'crosshair' : t === 'line' ? 'col-resize' : 'cell';
+}
+
+document.getElementById('colorPicker').addEventListener('input', (e) => {
+  drawColor = e.target.value;
+  if (currentPath) currentPath.color = drawColor;
+});
+document.getElementById('sizeSlider').addEventListener('input', (e) => {
+  lineWidth = parseInt(e.target.value);
+  document.getElementById('sizeLabel').textContent = lineWidth + 'px';
+  if (currentPath) currentPath.width = lineWidth;
+});
+
+// ===== Canvas Interaction =====
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const imgX = (clientX - rect.left) / imageDisplayScale;
+  const imgY = (clientY - rect.top) / imageDisplayScale;
+  return { x: imgX, y: imgY, sx: clientX - rect.left, sy: clientY - rect.top };
+}
+
+canvas.addEventListener('pointerdown', onDown);
+canvas.addEventListener('pointermove', onMove);
+canvas.addEventListener('pointerup', onUp);
+canvas.addEventListener('pointercancel', onUp);
+
+function onDown(e) {
+  e.preventDefault();
+  const pos = getPos(e);
+  canvas.setPointerCapture(e.pointerId);
+
+  // Check if clicking near an existing control point
+  if (currentPath && currentPoints.length > 0) {
+    const closest = findNearestPoint(pos.sx, pos.sy, 15);
+    if (closest !== null && closest.pathIdx === (selectedPathIdx >= 0 ? selectedPathIdx : paths.length - 1) && closest.ptIdx >= 0) {
+      dragPoint = closest;
+      dragOffset.x = pos.sx - closest.sx;
+      dragOffset.y = pos.sy - closest.sy;
+      return;
+    }
+  }
+
+  if (tool === 'pen') {
+    isDrawing = true;
+    if (!currentPath || selectedPathIdx < 0) {
+      startNewPath(pos);
+    }
+    currentPoints.push({ x: pos.x, y: pos.y });
+    render();
+  } else if (tool === 'line') {
+    isDrawing = true;
+    lineStart = pos;
+  } else if (tool === 'bezier') {
+    isDrawing = true;
+    bezierPoints.push({ x: pos.x, y: pos.y });
+    if (currentPath && selectedPathIdx >= 0) {
+      currentPoints.push({ x: pos.x, y: pos.y });
+    }
+    render();
+  }
+}
+
+function onMove(e) {
+  e.preventDefault();
+  const pos = getPos(e);
+
+  // Dragging a control point
+  if (dragPoint) {
+    e.preventDefault();
+    const newSx = pos.sx - dragOffset.x;
+    const newSy = pos.sy - dragOffset.y;
+    const newX = newSx / imageDisplayScale;
+    const newY = newSy / imageDisplayScale;
+
+    const p = currentPoints[dragPoint.ptIdx];
+    if (dragPoint.cp) {
+      p[dragPoint.cp] = { x: newX, y: newY };
+    } else {
+      p.x = newX; p.y = newY;
+    }
+    render();
+    return;
+  }
+
+  if (tool === 'pen' && isDrawing) {
+    currentPoints.push({ x: pos.x, y: pos.y });
+    render();
+  } else if (tool === 'line' && isDrawing && lineStart) {
+    render();
+    // Draw preview line
+    ctx.save();
+    ctx.strokeStyle = drawColor;
+    ctx.lineWidth = lineWidth;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(lineStart.x, lineStart.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    ctx.restore();
+  } else if (tool === 'bezier' && isDrawing && bezierPoints.length > 0) {
+    render();
+    // Draw preview segments
+    ctx.save();
+    ctx.strokeStyle = drawColor;
+    ctx.lineWidth = lineWidth;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    const pts = bezierPoints;
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) {
+      ctx.lineTo(pts[i].x, pts[i].y);
+    }
+    ctx.stroke();
+    // Draw control handles
+    ctx.setLineDash([]);
+    ctx.strokeStyle = drawColor + '66';
+    for (let i = 0; i < pts.length - 1; i++) {
+      ctx.beginPath();
+      ctx.moveTo(pts[i].x, pts[i].y);
+      const midX = (pts[i].x + pts[i+1].x) / 2;
+      const midY = (pts[i].y + pts[i+1].y) / 2;
+      ctx.quadraticCurveTo(midX + (pts[i].x - pts[i+1].x)*0.3, midY + (pts[i].y - pts[i+1].y)*0.3, pts[i+1].x, pts[i+1].y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Highlight hovered point
+  if (!isDrawing && currentPoints.length > 0) {
+    const closest = findNearestPoint(pos.sx, pos.sy, 12);
+    const prevHover = hoveredPoint;
+    hoveredPoint = closest;
+    if (prevHover !== closest) render();
+  }
+}
+
+function onUp(e) {
+  if (!isDrawing) return;
+  isDrawing = false;
+
+  if (tool === 'pen' && currentPoints.length > 0) {
+    saveCurrentPath();
+  } else if (tool === 'line' && lineStart) {
+    const pos = getPos(e.changedTouches ? e.changedTouches[0] || e : e);
+    currentPoints = [{ x: lineStart.x, y: lineStart.y }, { x: pos.x, y: pos.y }];
+    saveCurrentPath();
+    lineStart = null;
+  } else if (tool === 'bezier' && bezierPoints.length >= 2) {
+    // Convert to cubic bezier segments
+    const bezierConverted = bezierPointsToSegments(bezierPoints);
+    currentPoints = bezierConverted;
+    if (currentPoints.length > 0) saveCurrentPath();
+    bezierPoints = [];
+  }
+
+  render();
+  updateLayersPanel();
+}
+
+function bezierPointsToSegments(points) {
+  if (points.length < 2) return [];
+  const segments = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i];
+    const p1 = points[i + 1];
+    const mx = (p0.x + p1.x) / 2;
+    const my = (p0.y + p1.y) / 2;
+    segments.push({ x: p0.x, y: p0.y, cp1x: mx + (p1.x - p0.x)*0.2, cp1y: my + (p1.y - p0.y)*0.2 });
+    segments.push({ x: p1.x, y: p1.y, cp2x: mx - (p1.x - p0.x)*0.2, cp2y: my - (p1.y - p0.y)*0.2 });
+  }
+  return segments;
+}
+
+function startNewPath(pos) {
+  const pathName = 'Path ' + (paths.length + 1);
+  currentPath = { name: pathName, color: drawColor, width: lineWidth, points: [] };
+  selectedPathIdx = paths.length;
+}
+
+function saveCurrentPath() {
+  if (!currentPath || currentPoints.length < 2) return;
+  currentPath.points = currentPoints.map(p => ({ ...p }));
+  paths.push(currentPath);
+  undoStack.push({ type: 'add', pathIdx: paths.length - 1 });
+  redoStack = [];
+  currentPath = null;
+  currentPoints = [];
+  updateLayersPanel();
+}
+
+function findNearestPoint(sx, sy, threshold) {
+  let best = null;
+  let bestDist = threshold;
+  // Only check points in the active/currently selected path
+  let pathIdx = selectedPathIdx >= 0 ? selectedPathIdx : (paths.length - 1);
+  if (pathIdx < 0) return null;
+  const pts = paths[pathIdx].points;
+  const sxScale = imageDisplayScale;
+  const syScale = imageDisplayScale;
+
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    const dx = sx - (p.x * sxScale);
+    const dy = sy - (p.y * syScale);
+    const d = Math.sqrt(dx*dx + dy*dy);
+    if (d < bestDist) { bestDist = d; best = { pathIdx, ptIdx: i, sx: p.x*sxScale, sy: p.y*syScale }; }
+    if (p.cp1x !== undefined) {
+      const cdx = sx - (p.cp1x * sxScale);
+      const cdy = sy - (p.cp1y * syScale);
+      const cd = Math.sqrt(cdx*cdx + cdy*cdy);
+      if (cd < bestDist) { bestDist = cd; best = { pathIdx, ptIdx: i, cp: 'cp1', sx: p.cp1x*sxScale, sy: p.cp1y*syScale }; }
+    }
+    if (p.cp2x !== undefined) {
+      const cdx = sx - (p.cp2x * sxScale);
+      const cdy = sy - (p.cp2y * syScale);
+      const cd = Math.sqrt(cdx*cdx + cdy*cdy);
+      if (cd < bestDist) { bestDist = cd; best = { pathIdx, ptIdx: i, cp: 'cp2', sx: p.cp2x*sxScale, sy: p.cp2y*syScale }; }
+    }
+  }
+  return best;
+}
+
+// ===== Undo / Redo =====
+document.getElementById('btnUndo').onclick = () => {
+  if (undoStack.length === 0) return;
+  const action = undoStack.pop();
+  redoStack.push(action);
+  if (action.type === 'add') {
+    paths.splice(action.pathIdx, 1);
+    selectedPathIdx = Math.min(selectedPathIdx, paths.length - 1);
+  }
+  render();
+  updateLayersPanel();
+};
+
+document.getElementById('btnRedo').onclick = () => {
+  if (redoStack.length === 0) return;
+  const action = redoStack.pop();
+  undoStack.push(action);
+  if (action.type === 'add') {
+    const p = { ...paths[action.pathIdx], points: paths[action.pathIdx].points.map(pt => ({...pt})) };
+    paths.splice(action.pathIdx, 0, p);
+    selectedPathIdx = action.pathIdx;
+  }
+  render();
+  updateLayersPanel();
+};
+
+document.getElementById('btnClear').onclick = () => {
+  if (paths.length === 0) return;
+  paths.splice(0, paths.length);
+  undoStack = [];
+  redoStack = [];
+  selectedPathIdx = -1;
+  render();
+  updateLayersPanel();
+};
+
+// ===== Layers Panel =====
+document.getElementById('btnLayers').onclick = () => {
+  const panel = document.getElementById('layersPanel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+};
+
+function updateLayersPanel() {
+  const list = document.getElementById('layersList');
+  list.innerHTML = '';
+  paths.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'layer-item' + (i === selectedPathIdx ? ' active' : '');
+    div.innerHTML = `<span class="dot" style="background:${p.color}"></span><span>${p.name}</span>`;
+    div.onclick = () => {
+      selectedPathIdx = i;
+      currentPath = p;
+      currentPoints = p.points.map(pt => ({...pt}));
+      updateLayersPanel();
+      render();
+    };
+    const rm = document.createElement('span');
+    rm.className = 'remove';
+    rm.textContent = '✕';
+    rm.onclick = (e) => {
+      e.stopPropagation();
+      paths.splice(i, 1);
+      undoStack.push({ type: 'add', pathIdx: i });
+      redoStack = [];
+      selectedPathIdx = Math.min(selectedPathIdx, paths.length - 1);
+      updateLayersPanel();
+      render();
+    };
+    div.appendChild(rm);
+    list.appendChild(div);
+  });
+}
+
+// ===== Render =====
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw image
+  if (sourceImage) {
+    const w = sourceImage.width * imageDisplayScale;
+    const h = sourceImage.height * imageDisplayScale;
+    const x = (canvas.width - w) / 2;
+    const y = (canvas.height - h) / 2;
+    ctx.save();
+    ctx.globalAlpha = imageOpacity;
+    ctx.drawImage(sourceImage, x, y, w, h);
+    ctx.restore();
+  }
+
+  // Draw all saved paths
+  const offsetX = (canvas.width - (sourceImage ? sourceImage.width * imageDisplayScale : canvas.width)) / 2;
+  const offsetY = (canvas.height - (sourceImage ? sourceImage.height * imageDisplayScale : canvas.height)) / 2;
+  const offX = sourceImage ? (canvas.width - sourceImage.width * imageDisplayScale) / 2 : 0;
+  const offY = sourceImage ? (canvas.height - sourceImage.height * imageDisplayScale) / 2 : 0;
+
+  paths.forEach((path, idx) => {
+    ctx.save();
+    ctx.strokeStyle = path.color;
+    ctx.lineWidth = path.width;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    drawPathOnCtx(ctx, path.points, offX, offY, idx === selectedPathIdx);
+    ctx.restore();
+  });
+
+  // Draw current path (being edited)
+  if (currentPath && currentPoints.length > 0) {
+    ctx.save();
+    ctx.strokeStyle = currentPath.color;
+    ctx.lineWidth = currentPath.width;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    drawPathOnCtx(ctx, currentPoints, offX, offY, true);
+    ctx.restore();
+  }
+
+  // Draw control points on hovered/dragged path
+  const ptsToDraw = currentPath ? currentPoints : (selectedPathIdx >= 0 && paths.length > 0 ? paths[selectedPathIdx].points : null);
+  if (ptsToDraw && ptsToDraw.length > 0) {
+    ctx.save();
+    ptsToDraw.forEach((pt, i) => {
+      const px = pt.x * imageDisplayScale + offX;
+      const py = pt.y * imageDisplayScale + offY;
+      const isHovered = hoveredPoint && hoveredPoint.ptIdx === i && hoveredPoint.pathIdx === (selectedPathIdx >= 0 ? selectedPathIdx : 0);
+      const r = isHovered ? 7 : 5;
+
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.fillStyle = isHovered ? '#fff' : '#000';
+      ctx.fill();
+      ctx.strokeStyle = isHovered ? drawColor : '#888';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Draw control handles
+      if (pt.cp1x !== undefined) {
+        const cpx1 = pt.cp1x * imageDisplayScale + offX;
+        const cpy1 = pt.cp1y * imageDisplayScale + offY;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(cpx1, cpy1);
+        ctx.strokeStyle = pathColorAlpha(drawColor, 0.4);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cpx1, cpy1, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+        ctx.stroke();
+      }
+      if (pt.cp2x !== undefined) {
+        const cpx2 = pt.cp2x * imageDisplayScale + offX;
+        const cpy2 = pt.cp2y * imageDisplayScale + offY;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(cpx2, cpy2);
+        ctx.strokeStyle = pathColorAlpha(drawColor, 0.4);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cpx2, cpy2, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+        ctx.stroke();
+      }
+    });
+    ctx.restore();
+  }
+}
+
+function drawPathOnCtx(ctx, points, offX, offY, highlight) {
+  if (points.length < 1) return;
+  ctx.beginPath();
+  ctx.moveTo(points[0].x * imageDisplayScale + offX, points[0].y * imageDisplayScale + offY);
+
+  for (let i = 1; i < points.length; i++) {
+    const pt = points[i];
+    if (pt.cp1x !== undefined) {
+      // Cubic bezier
+      const c1x = pt.cp1x * imageDisplayScale + offX;
+      const c1y = pt.cp1y * imageDisplayScale + offY;
+      const c2x = pt.cp2x * imageDisplayScale + offX;
+      const c2y = pt.cp2y * imageDisplayScale + offY;
+      ctx.bezierCurveTo(
+        points[i-1].x * imageDisplayScale + offX,
+        points[i-1].y * imageDisplayScale + offY,
+        c1x, c1y, c2x, c2y
+      );
+      // Note: pt.x, pt.y are the endpoint of the bezier
+      ctx.lineTo(pt.x * imageDisplayScale + offX, pt.y * imageDisplayScale + offY);
+    } else {
+      ctx.lineTo(pt.x * imageDisplayScale + offX, pt.y * imageDisplayScale + offY);
+    }
+  }
+  ctx.stroke();
+}
+
+function pathColorAlpha(color, alpha) {
+  const r = parseInt(color.slice(1,3), 16);
+  const g = parseInt(color.slice(3,5), 16);
+  const b = parseInt(color.slice(5,7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// ===== Opacity Toggle =====
+document.getElementById('btnOpacity').onclick = () => {
+  if (imageOpacity > 0.1) {
+    imageOpacity = 0.1;
+  } else {
+    imageOpacity = 1;
+  }
+  render();
+};
+
+// ===== Export SVG =====
+document.getElementById('btnExportSVG').onclick = () => {
+  if (paths.length === 0) { alert('No paths to export!'); return; }
+
+  const w = sourceImage ? sourceImage.width : 800;
+  const h = sourceImage ? sourceImage.height : 600;
+
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">\n`;
+
+  if (sourceImage) {
+    svg += `  <image href="${sourceImage.src}" width="${w}" height="${h}"/>\n`;
+  }
+
+  paths.forEach(path => {
+    if (path.points.length < 2) return;
+    let d = `M ${path.points[0].x} ${path.points[0].y}`;
+    for (let i = 1; i < path.points.length; i++) {
+      const pt = path.points[i];
+      if (pt.cp1x !== undefined) {
+        d += ` C ${pt.cp1x} ${pt.cp1y}, ${pt.cp2x} ${pt.cp2y}, ${pt.x} ${pt.y}`;
+      } else {
+        d += ` L ${pt.x} ${pt.y}`;
+      }
+    }
+    svg += `  <path d="${d}" fill="none" stroke="${path.color}" stroke-width="${path.width}" stroke-linecap="round" stroke-linejoin="round"/>\n`;
+  });
+
+  svg += '</svg>';
+
+  document.getElementById('modalTitle').textContent = 'SVG Export';
+  document.getElementById('modalContent').value = svg;
+  document.getElementById('modalOverlay').classList.add('show');
+
+  // Also offer download
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'rotoscope-trace.svg';
+  a.click();
+};
+
+// ===== Export PNG =====
+document.getElementById('btnExportPNG').onclick = () => {
+  if (paths.length === 0) { alert('No paths to export!'); return; }
+
+  const exportCanvas = document.createElement('canvas');
+  const w = sourceImage ? sourceImage.width : 800;
+  const h = sourceImage ? sourceImage.height : 600;
+  exportCanvas.width = w;
+  exportCanvas.height = h;
+  const ectx = exportCanvas.getContext('2d');
+
+  if (sourceImage) {
+    ectx.drawImage(sourceImage, 0, 0, w, h);
+  }
+
+  paths.forEach(path => {
+    if (path.points.length < 2) return;
+    ectx.strokeStyle = path.color;
+    ectx.lineWidth = path.width;
+    ectx.lineJoin = 'round';
+    ectx.lineCap = 'round';
+    ectx.beginPath();
+    ectx.moveTo(path.points[0].x, path.points[0].y);
+    for (let i = 1; i < path.points.length; i++) {
+      const pt = path.points[i];
+      if (pt.cp1x !== undefined) {
+        ectx.bezierCurveTo(pt.cp1x, pt.cp1y, pt.cp2x, pt.cp2y, pt.x, pt.y);
+      } else {
+        ectx.lineTo(pt.x, pt.y);
+      }
+    }
+    ectx.stroke();
+  });
+
+  const dataUrl = exportCanvas.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = 'rotoscope-trace.png';
+  a.click();
+};
+
+// ===== Modal =====
+document.getElementById('modalClose').onclick = () => {
+  document.getElementById('modalOverlay').classList.remove('show');
+};
+document.getElementById('modalCopy').onclick = () => {
+  const ta = document.getElementById('modalContent');
+  ta.select();
+  navigator.clipboard.writeText(ta.value).then(() => {
+    document.getElementById('modalCopy').textContent = 'Copied!';
+    setTimeout(() => document.getElementById('modalCopy').textContent = 'Copy to Clipboard', 2000);
+  });
+};
+document.getElementById('modalOverlay').onclick = (e) => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+};
+
+// ===== Keyboard Shortcuts =====
+document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && e.key === 'z') { e.preventDefault(); document.getElementById('btnUndo').click(); }
+  if (e.ctrlKey && e.key === 'y') { e.preventDefault(); document.getElementById('btnRedo').click(); }
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (hoveredPoint && !isDrawing) {
+      const idx = hoveredPoint.ptIdx;
+      if (idx >= 0 && currentPoints && currentPoints.length > 1) {
+        currentPoints.splice(idx, 1);
+        render();
+      }
+    }
+  }
+});
+
+// ===== Touch support (prevent scrolling while drawing) =====
+document.addEventListener('touchmove', (e) => {
+  if (e.target === canvas) e.preventDefault();
+}, { passive: false });
+
+// Initial render
+render();
+updateLayersPanel();
+</script>
+</body>
+</html>

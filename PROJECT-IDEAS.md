@@ -35,7 +35,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [x] **Generative Art — Flow Fields** — Particles flowing along a noise-based vector field.
 - [x] **QR Code Generator** — Type text or a URL and instantly generate a downloadable QR code.
 - [x] **Color Mixer** — Blend colors interactively using sliders or drag-to-mix.
-- [ ] **Rotoscope** — Upload an image, trace over it with draggable lines/curves.
+- [x] **Rotoscope** — Upload an image, trace over it with draggable lines/curves.
 - [x] **Maze Generator** — Auto-generate a maze, user can solve it by navigating.
 - [x] **Chaos Game** — Fractal points drawn by random vertex selection rules.
 - [x] **Spirograph** — Draw spirograph patterns by adjusting gear parameters.
