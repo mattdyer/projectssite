@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stopwatch / Timer</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{--bg:#0f1117;--card:#1a1d27;--accent:#6c63ff;--accent-glow:rgba(108,99,255,.3);--text:#e4e4e7;--dim:#71717a;--green:#22c55e;--red:#ef4444;--gold:#f59e0b}
+  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:1.5rem 1rem}
+  h1{font-size:1.4rem;font-weight:600;margin-bottom:1.2rem;letter-spacing:-.02em}
+  .tabs{display:flex;gap:.5rem;margin-bottom:1.5rem}
+  .tab-btn{padding:.6rem 1.5rem;border:2px solid var(--card);border-radius:999px;background:transparent;color:var(--dim);font-size:.95rem;cursor:pointer;transition:all .2s}
+  .tab-btn.active{border-color:var(--accent);color:var(--text);background:rgba(108,99,255,.12)}
+  .tab-btn:hover{border-color:var(--accent)}
+  .panel{display:none;width:100%;max-width:420px}
+  .panel.active{display:block}
+  .display-card{background:var(--card);border-radius:20px;padding:2.5rem 1rem;text-align:center;margin-bottom:1.5rem;position:relative;overflow:hidden}
+  .display-card::before{content:'';position:absolute;inset:0;border-radius:20px;background:radial-gradient(circle at 50% 0%,var(--accent-glow),transparent 70%);pointer-events:none}
+  .time-display{font-size:3.2rem;font-variant-numeric:tabular-nums;font-weight:700;letter-spacing:.02em;position:relative;z-index:1}
+  .time-display .ms{font-size:1.6rem;color:var(--dim)}
+  .countdown-input-row{display:flex;gap:.5rem;justify-content:center;margin-bottom:1rem}
+  .cd-input{width:64px;padding:.6rem;border:2px solid #2a2d3a;border-radius:12px;background:transparent;color:var(--text);font-size:1.1rem;text-align:center;font-variant-numeric:tabular-nums}
+  .cd-input:focus{outline:none;border-color:var(--accent)}
+  .cd-sep{font-size:1.5rem;color:var(--dim);align-self:center}
+  .cd-presets{display:flex;gap:.4rem;justify-content:center;margin-bottom:1rem;flex-wrap:wrap}
+  .preset-btn{padding:.35rem .75rem;border:1px solid #2a2d3a;border-radius:8px;background:transparent;color:var(--dim);font-size:.8rem;cursor:pointer;transition:all .15s}
+  .preset-btn:hover{border-color:var(--accent);color:var(--text)}
+  .btn-row{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap}
+  .btn{padding:.7rem 1.8rem;border:none;border-radius:14px;font-size:1rem;font-weight:600;cursor:pointer;transition:all .15s;min-width:100px}
+  .btn:active{transform:scale(.96)}
+  .btn-start{background:var(--green);color:#fff}
+  .btn-start.running{background:var(--gold);color:#000}
+  .btn-reset{background:#2a2d3a;color:var(--text)}
+  .btn-lap{background:#2a2d3a;color:var(--text)}
+  .alarmed{animation:flash .5s infinite alternate}
+  @keyframes flash{from{box-shadow:0 0 20px var(--red)}to{box-shadow:0 0 60px var(--red);background:rgba(239,68,68,.15)}}
+  .lap-list{background:var(--card);border-radius:16px;overflow:hidden;max-height:300px;overflow-y:auto}
+  .lap-header,.lap-row{display:flex;justify-content:space-between;padding:.7rem 1.2rem;font-size:.9rem}
+  .lap-header{color:var(--dim);border-bottom:1px solid #2a2d3a;position:sticky;top:0;background:var(--card);z-index:1}
+  .lap-row{border-bottom:1px solid rgba(42,45,58,.5)}
+  .lap-row:last-child{border-bottom:none}
+  .lap-num{color:var(--accent);font-weight:600}
+  .lap-delta{color:var(--dim)}
+  .lap-time{font-variant-numeric:tabular-nums;font-weight:600}
+  .alarm-overlay{position:fixed;inset:0;background:rgba(239,68,68,.15);display:none;align-items:center;justify-content:center;z-index:100;flex-direction:column;gap:1rem}
+  .alarm-overlay.show{display:flex}
+  .alarm-text{font-size:3rem;font-weight:800;color:var(--red);animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+  .alarm-btn{padding:1rem 2.5rem;border:none;border-radius:14px;background:var(--red);color:#fff;font-size:1.1rem;font-weight:700;cursor:pointer}
+  ::-webkit-scrollbar{width:6px}
+  ::-webkit-scrollbar-thumb{background:#2a2d3a;border-radius:3px}
+</style>
+</head>
+<body>
+<h1>⏱ Stopwatch / Timer</h1>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('stopwatch')">Stopwatch</button>
+  <button class="tab-btn" onclick="switchTab('timer')">Countdown</button>
+</div>
+
+<!-- Stopwatch Panel -->
+<div id="stopwatch-panel" class="panel active">
+  <div class="display-card">
+    <div class="time-display" id="sw-display">00:00:00<span class="ms">.000</span></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-start" id="sw-start" onclick="swToggle()">Start</button>
+    <button class="btn btn-lap" id="sw-lap" onclick="swLap()">Lap</button>
+    <button class="btn btn-reset" onclick="swReset()">Reset</button>
+  </div>
+  <div style="height:1rem"></div>
+  <div class="lap-list" id="lap-list" style="display:none">
+    <div class="lap-header"><span>Lap</span><span>Split</span><span>Time</span></div>
+  </div>
+</div>
+
+<!-- Countdown Timer Panel -->
+<div id="timer-panel" class="panel">
+  <div class="display-card" id="timer-card">
+    <div class="time-display" id="timer-display">00:00:00<span class="ms">.000</span></div>
+  </div>
+  <div id="timer-setup">
+    <div class="cd-input-row">
+      <input type="number" class="cd-input" id="cd-hours" value="0" min="0" max="99" title="Hours">
+      <span class="cd-sep">:</span>
+      <input type="number" class="cd-input" id="cd-minutes" value="5" min="0" max="59" title="Minutes">
+      <span class="cd-sep">:</span>
+      <input type="number" class="cd-input" id="cd-seconds" value="0" min="0" max="59" title="Seconds">
+    </div>
+    <div class="cd-presets">
+      <button class="preset-btn" onclick="setPreset(1)">1 min</button>
+      <button class="preset-btn" onclick="setPreset(3)">3 min</button>
+      <button class="preset-btn" onclick="setPreset(5)">5 min</button>
+      <button class="preset-btn" onclick="setPreset(10)">10 min</button>
+      <button class="preset-btn" onclick="setPreset(15)">15 min</button>
+      <button class="preset-btn" onclick="setPreset(25)">25 min</button>
+      <button class="preset-btn" onclick="setPreset(60)">60 min</button>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-start" id="timer-start" onclick="timerToggle()">Start</button>
+    <button class="btn btn-reset" onclick="timerReset()">Reset</button>
+  </div>
+</div>
+
+<!-- Alarm Overlay -->
+<div class="alarm-overlay" id="alarm-overlay">
+  <div class="alarm-text">⏰ TIME'S UP!</div>
+  <button class="alarm-btn" onclick="dismissAlarm()">Dismiss</button>
+</div>
+
+<script>
+/* ---- TAB SWITCHING ---- */
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active', (tab==='stopwatch'?i===0:i===1));
+  });
+  document.getElementById('stopwatch-panel').classList.toggle('active', tab==='stopwatch');
+  document.getElementById('timer-panel').classList.toggle('active', tab==='timer');
+}
+
+/* ---- FORMAT HELPERS ---- */
+function fmt(ms){
+  const h=Math.floor(ms/3600000);
+  const m=Math.floor(ms%3600000/60000);
+  const s=Math.floor(ms%60000/1000);
+  const mil=ms%1000;
+  const p=n=>String(n).padStart(2,'0');
+  return {str:`${p(h)}:${p(m)}:${p(s)}`, mil:`.${String(mil).padStart(3,'0')}`};
+}
+
+/* ---- STOPWATCH ---- */
+let swRunning=false, swStart=0, swElapsed=0, swRAF=null;
+let laps=[], lastLapTime=0;
+
+function swTick(){
+  const now=performance.now();
+  swElapsed=swStart+(now-swStart);
+  document.getElementById('sw-display').innerHTML=fmt(swElapsed).str+'<span class="ms">'+fmt(swElapsed).mil+'</span>';
+  if(swRunning) swRAF=requestAnimationFrame(swTick);
+}
+function swToggle(){
+  const btn=document.getElementById('sw-start');
+  if(!swRunning){
+    swRunning=true;
+    swStart=performance.now()-swElapsed;
+    swTick();
+    btn.textContent='Stop';btn.classList.add('running');
+  } else {
+    swRunning=false;
+    swElapsed=performance.now()-(swStart);
+    cancelAnimationFrame(swRAF);
+    btn.textContent='Start';btn.classList.remove('running');
+  }
+}
+function swReset(){
+  swRunning=false;swElapsed=0;laps=[];lastLapTime=0;cancelAnimationFrame(swRAF);
+  document.getElementById('sw-display').innerHTML='00:00:00<span class="ms">.000</span>';
+  document.getElementById('sw-start').textContent='Start';
+  document.getElementById('sw-start').classList.remove('running');
+  document.getElementById('lap-list').style.display='none';
+  document.getElementById('lap-list').querySelectorAll('.lap-row').forEach(r=>r.remove());
+}
+function swLap(){
+  if(!swRunning)return;
+  const total=swElapsed, delta=total-lastLapTime;
+  lastLapTime=total;
+  laps.push({total,delta});
+  const list=document.getElementById('lap-list');
+  list.style.display='block';
+  const row=document.createElement('div');
+  row.className='lap-row';
+  row.innerHTML=`<span class="lap-num">#${laps.length}</span><span class="lap-delta">${fmt(delta).str}${fmt(delta).mil}</span><span class="lap-time">${fmt(total).str}${fmt(total).mil}</span>`;
+  list.appendChild(row);
+  list.scrollTop=list.scrollHeight;
+}
+
+/* ---- COUNTDOWN TIMER ---- */
+let timerRunning=false, timerEnd=0, timerRemaining=0, timerRAF=null;
+let alarmSound=null;
+
+function timerTick(){
+  const rem=Math.max(0, timerEnd-performance.now());
+  timerRemaining=rem;
+  document.getElementById('timer-display').innerHTML=fmt(rem).str+'<span class="ms">'+fmt(rem).mil+'</span>';
+  if(rem<=0){
+    timerRunning=false;
+    cancelAnimationFrame(timerRAF);
+    document.getElementById('timer-start').textContent='Start';
+    document.getElementById('timer-start').classList.remove('running');
+    triggerAlarm();
+    return;
+  }
+  if(timerRAF) timerRAF=requestAnimationFrame(timerTick);
+}
+function timerToggle(){
+  const btn=document.getElementById('timer-start');
+  if(!timerRunning){
+    if(timerRemaining<=0){
+      const h=parseInt(document.getElementById('cd-hours').value)||0;
+      const m=parseInt(document.getElementById('cd-minutes').value)||0;
+      const s=parseInt(document.getElementById('cd-seconds').value)||0;
+      timerRemaining=(h*3600+m*60+s)*1000;
+      if(timerRemaining<=0)return;
+    }
+    timerRunning=true;
+    timerEnd=performance.now()+timerRemaining;
+    document.getElementById('timer-setup').style.display='none';
+    timerTick();
+    btn.textContent='Stop';btn.classList.add('running');
+  } else {
+    timerRunning=false;
+    timerRemaining=Math.max(0, timerEnd-performance.now());
+    cancelAnimationFrame(timerRAF);
+    btn.textContent='Start';btn.classList.remove('running');
+  }
+}
+function timerReset(){
+  timerRunning=false;timerRemaining=0;cancelAnimationFrame(timerRAF);
+  document.getElementById('timer-display').innerHTML='00:00:00<span class="ms">.000</span>';
+  document.getElementById('timer-start').textContent='Start';
+  document.getElementById('timer-start').classList.remove('running');
+  document.getElementById('timer-setup').style.display='block';
+  document.getElementById('timer-card').classList.remove('alarmed');
+}
+function setPreset(min){
+  document.getElementById('cd-hours').value=0;
+  document.getElementById('cd-minutes').value=min;
+  document.getElementById('cd-seconds').value=0;
+}
+function triggerAlarm(){
+  const overlay=document.getElementById('alarm-overlay');
+  overlay.classList.add('show');
+  document.getElementById('timer-card').classList.add('alarmed');
+  // Generate an audible alarm using Web Audio API
+  try{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    function beep(i){
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      osc.connect(gain);gain.connect(ctx.destination);
+      osc.frequency.value=800+i*200;osc.type='sine';
+      gain.gain.setValueAtTime(0.3,ctx.currentTime+i*0.3);
+      gain.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+i*0.3+0.2);
+      osc.start(ctx.currentTime+i*0.3);osc.stop(ctx.currentTime+i*0.3+0.25);
+    }
+    for(let i=0;i<6;i++) beep(i);
+    // Repeat a few times
+    setTimeout(()=>{for(let i=0;i<6;i++) beep(i);},2000);
+    setTimeout(()=>{for(let i=0;i<6;i++) beep(i);},4000);
+  }catch(e){}
+}
+function dismissAlarm(){
+  document.getElementById('alarm-overlay').classList.remove('show');
+  document.getElementById('timer-card').classList.remove('alarmed');
+}
+
+// Prevent negative timer input
+document.querySelectorAll('.cd-input').forEach(inp=>{
+  inp.addEventListener('input',()=>{if(parseInt(inp.value)<0)inp.value=0});
+});
+</script>
+</body>
+</html>
