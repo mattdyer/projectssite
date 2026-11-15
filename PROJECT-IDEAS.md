@@ -42,7 +42,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [x] **Music Visualizer** — Canvas visualizes microphone input as bars, circles, or waves.
 - [x] **Kaleidoscope** — Mirror the mouse cursor in real time to create kaleidoscopic patterns.
 - [x] **Gravity Drawing** — Draw strokes that fall with simulated gravity.
-- [ ] **Digital Clock with Particle Background** — Time display with animated particles.
+- [x] **Digital Clock with Particle Background** — Time display with animated particles.
 
 ## Utilities / Fun
 

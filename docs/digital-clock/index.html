@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digital Clock — Particle Background</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a1a; font-family: 'Courier New', monospace; }
+  canvas { display: block; position: absolute; top: 0; left: 0; }
+
+  .clock-container {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 10; pointer-events: none;
+  }
+
+  .time-display {
+    font-size: clamp(3rem, 12vw, 10rem);
+    color: #e0e0ff;
+    text-shadow: 0 0 20px rgba(100, 140, 255, 0.7), 0 0 60px rgba(100, 140, 255, 0.3);
+    letter-spacing: 0.05em;
+    user-select: none;
+    transition: color 0.3s;
+  }
+
+  .date-display {
+    font-size: clamp(1rem, 3vw, 2rem);
+    color: #8888bb;
+    margin-top: 0.5em;
+    text-shadow: 0 0 10px rgba(100, 140, 255, 0.4);
+    user-select: none;
+  }
+
+  .controls {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    z-index: 20; pointer-events: all;
+    display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+  }
+
+  .controls button {
+    background: rgba(100, 140, 255, 0.15);
+    border: 1px solid rgba(100, 140, 255, 0.3);
+    color: #aab;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    transition: all 0.3s;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .controls button:hover, .controls button.active {
+    background: rgba(100, 140, 255, 0.35);
+    color: #dde;
+    box-shadow: 0 0 15px rgba(100, 140, 255, 0.3);
+  }
+
+  .ampersand {
+    display: inline-block;
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+</style>
+</head>
+<body>
+<canvas id="particles"></canvas>
+
+<div class="clock-container">
+  <div class="time-display" id="time">00:00:00</div>
+  <div class="date-display" id="date"></div>
+</div>
+
+<div class="controls">
+  <button id="btn24" class="active" onclick="setMode(24)">24H</button>
+  <button id="btn12" onclick="setMode(12)">12H</button>
+  <button onclick="toggleParticles()">Toggle Particles</button>
+  <button onclick="addBurst()">+ Burst</button>
+</div>
+
+<script>
+// --- Canvas & Context ---
+const canvas = document.getElementById('particles');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// --- Configuration ---
+let timeMode = 24;
+let particlesEnabled = true;
+const PARTICLE_COUNT = Math.min(200, Math.floor((W * H) / 8000));
+const MOUSE_RADIUS = 120;
+
+// --- Mouse / Touch tracking ---
+let mouseX = -9999, mouseY = -9999;
+
+document.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+document.addEventListener('mouseleave', () => { mouseX = -9999; mouseY = -9999; });
+document.addEventListener('touchmove', e => {
+  if (e.touches.length) { mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }
+}, { passive: true });
+document.addEventListener('touchend', () => { mouseX = -9999; mouseY = -9999; });
+
+// --- Particle Class ---
+class Particle {
+  constructor(x, y, burst) {
+    this.x = x !== undefined ? x : Math.random() * W;
+    this.y = y !== undefined ? y : Math.random() * H;
+    const speed = burst ? 3 + Math.random() * 4 : 0.2 + Math.random() * 0.8;
+    const angle = Math.random() * Math.PI * 2;
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed;
+    this.baseRadius = burst ? 1 + Math.random() * 2 : 1 + Math.random() * 2.5;
+    this.radius = this.baseRadius;
+    // Hues in the blue-purple-cyan range
+    this.hue = 200 + Math.random() * 80;
+    this.saturation = 60 + Math.random() * 40;
+    this.lightness = 60 + Math.random() * 30;
+    this.alpha = 0.4 + Math.random() * 0.6;
+    this.life = burst ? 60 + Math.random() * 60 : Infinity;
+    this.burst = !!burst;
+    if (!burst) this.life = Infinity;
+  }
+
+  update() {
+    // Mouse repulsion
+    const dx = this.x - mouseX;
+    const dy = this.y - mouseY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < MOUSE_RADIUS && dist > 0) {
+      const force = (MOUSE_RADIUS - dist) / MOUSE_RADIUS * 0.5;
+      this.vx += (dx / dist) * force;
+      this.vy += (dy / dist) * force;
+    }
+
+    // Damping
+    this.vx *= 0.98;
+    this.vy *= 0.98;
+
+    this.x += this.vx;
+    this.y += this.vy;
+
+    // Wrap around
+    if (this.x < -10) this.x = W + 10;
+    if (this.x > W + 10) this.x = -10;
+    if (this.y < -10) this.y = H + 10;
+    if (this.y > H + 10) this.y = -10;
+
+    // Burst fade
+    if (this.burst) {
+      this.life--;
+      this.alpha = Math.max(0, (this.life / 120) * 1);
+      this.radius = this.baseRadius * (this.life / 120);
+    }
+  }
+
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, Math.max(0.1, this.radius), 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${this.hue}, ${this.saturation}%, ${this.lightness}%, ${this.alpha})`;
+    ctx.fill();
+  }
+}
+
+// --- Connection lines between nearby particles ---
+function drawConnections() {
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 80) {
+        const alpha = (1 - dist / 80) * 0.15;
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.strokeStyle = `rgba(140, 170, 255, ${alpha})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+// --- Particle Pool ---
+let particles = [];
+function initParticles() {
+  particles = [];
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    particles.push(new Particle());
+  }
+}
+initParticles();
+
+function addBurst() {
+  for (let i = 0; i < 30; i++) {
+    particles.push(new Particle(
+      mouseX > 0 ? mouseX : W / 2,
+      mouseY > 0 ? mouseY : H / 2,
+      true
+    ));
+  }
+  // Trim old bursts
+  particles = particles.filter(p => p.life !== Infinity);
+  while (particles.length > PARTICLE_COUNT + 30) {
+    particles.shift();
+  }
+  // Re-add ambient
+  while (particles.filter(p => p.life === Infinity).length < PARTICLE_COUNT) {
+    particles.push(new Particle());
+  }
+}
+
+function toggleParticles() {
+  particlesEnabled = !particlesEnabled;
+}
+
+// --- Clock Logic ---
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+function updateClock() {
+  const now = new Date();
+  let h = now.getHours();
+  const m = now.getMinutes();
+  const s = now.getSeconds();
+  const ap = h >= 12 ? 'PM' : 'AM';
+
+  let timeStr;
+  if (timeMode === 12) {
+    h = h % 12 || 12;
+    timeStr = `${pad(h)}<span class="ampersand">:</span>${pad(m)}<span class="ampersand">:</span>${pad(s)} <small style="font-size:0.4em;vertical-align:super;margin-left:8px;">${ap}</small>`;
+  } else {
+    timeStr = `${pad(h)}<span class="ampersand">:</span>${pad(m)}<span class="ampersand">:</span>${pad(s)}`;
+  }
+
+  document.getElementById('time').innerHTML = timeStr;
+  document.getElementById('date').textContent =
+    `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+}
+
+function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+function setMode(m) {
+  timeMode = m;
+  document.getElementById('btn24').classList.toggle('active', m === 24);
+  document.getElementById('btn12').classList.toggle('active', m === 12);
+  updateClock();
+}
+
+updateClock();
+setInterval(updateClock, 1000);
+
+// --- Animation Loop ---
+function animate() {
+  // Fade trail
+  ctx.fillStyle = 'rgba(10, 10, 26, 0.15)';
+  ctx.fillRect(0, 0, W, H);
+
+  if (particlesEnabled) {
+    // Update & draw particles
+    for (const p of particles) {
+      p.update();
+      p.draw();
+    }
+    drawConnections();
+
+    // Clean up dead bursts
+    particles = particles.filter(p => p.life === Infinity || p.life > 0);
+  }
+
+  requestAnimationFrame(animate);
+}
+animate();
+
+// --- Keyboard shortcuts ---
+document.addEventListener('keydown', e => {
+  if (e.key === '1') setMode(12);
+  if (e.key === '2') setMode(24);
+  if (e.key === 'b') addBurst();
+  if (e.key === 'p') toggleParticles();
+});
+</script>
+</body>
+</html>
