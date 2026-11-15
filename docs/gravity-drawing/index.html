@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Gravity Drawing</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a1a;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    overflow-x: hidden;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  h1 {
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    padding: 12px 0 4px;
+    background: linear-gradient(90deg, #ff6ec7, #7873f5, #4adede);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 1px;
+  }
+  .subtitle { font-size: 0.85rem; color: #888; margin-bottom: 8px; }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+    padding: 8px 16px;
+    background: #15152a;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    max-width: 95vw;
+  }
+  .controls label { font-size: 0.8rem; color: #aaa; display: flex; align-items: center; gap: 4px; }
+  .controls input[type="range"] { width: 90px; accent-color: #7873f5; }
+  .controls input[type="color"] {
+    width: 32px; height: 28px; border: none; border-radius: 6px; cursor: pointer;
+    background: none; padding: 0;
+  }
+  .btn {
+    background: #7873f5;
+    color: #fff;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn:hover { background: #5a55d5; }
+  .btn:active { transform: scale(0.95); }
+  .btn.secondary { background: #333; }
+  .btn.secondary:hover { background: #444; }
+  canvas {
+    border-radius: 12px;
+    background: #0d0d22;
+    cursor: crosshair;
+    max-width: 95vw;
+    touch-action: none;
+  }
+  .stats {
+    font-size: 0.75rem;
+    color: #666;
+    margin-top: 6px;
+    display: flex;
+    gap: 16px;
+  }
+  .mode-toggle {
+    display: flex;
+    gap: 4px;
+  }
+  .mode-toggle .btn { padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; }
+  .mode-toggle .btn.active { background: #4adede; color: #000; }
+</style>
+</head>
+<body>
+<h1>Gravity Drawing</h1>
+<p class="subtitle">Draw strokes — watch them fall!</p>
+
+<div class="controls">
+  <label>Brush: <input type="range" id="brushSize" min="2" max="30" value="8"></label>
+  <label>Gravity: <input type="range" id="gravity" min="0" max="100" value="50"></label>
+  <label>Color: <input type="color" id="colorPicker" value="#ff6ec7"></label>
+  <label>Trail: <input type="range" id="trail" min="0" max="100" value="30"></label>
+  <div class="mode-toggle">
+    <button class="btn active" id="drawBtn" onclick="setMode('draw')">Draw</button>
+    <button class="btn secondary" id="eraseBtn" onclick="setMode('erase')">Erase</button>
+  </div>
+  <button class="btn secondary" onclick="clearCanvas()">Clear</button>
+  <button class="btn secondary" onclick="freezeAll()">Freeze</button>
+</div>
+
+<canvas id="canvas"></canvas>
+<div class="stats">
+  <span id="strokeCount">Strokes: 0</span>
+  <span id="dotCount">Particles: 0</span>
+  <span id="modeDisplay">Mode: Draw</span>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+// Sizing
+function resize() {
+  const maxW = Math.min(window.innerWidth * 0.95, 800);
+  const maxH = Math.min(window.innerHeight * 0.65, 550);
+  canvas.width = Math.floor(maxW);
+  canvas.height = Math.floor(maxH);
+  if (!isDrawing) ctx.fillStyle = '#0d0d22';
+  redraw();
+}
+window.addEventListener('resize', resize);
+resize();
+
+// State
+let strokes = [];       // array of {points:[{x,y,c}], frozen:false}
+let frozenParticles = []; // individual dots that have fallen off
+let currentStroke = null;
+let isDrawing = false;
+let mode = 'draw';
+
+// Controls
+const brushSlider = document.getElementById('brushSize');
+const gravitySlider = document.getElementById('gravity');
+const colorPicker = document.getElementById('colorPicker');
+const trailSlider = document.getElementById('trail');
+const strokeCountEl = document.getElementById('strokeCount');
+const dotCountEl = document.getElementById('dotCount');
+const modeDisplayEl = document.getElementById('modeDisplay');
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('drawBtn').className = m === 'draw' ? 'btn active' : 'btn secondary';
+  document.getElementById('eraseBtn').className = m === 'erase' ? 'btn active' : 'btn secondary';
+  modeDisplayEl.textContent = `Mode: ${m === 'draw' ? 'Draw' : 'Erase'}`;
+}
+
+function clearCanvas() {
+  strokes = [];
+  frozenParticles = [];
+  currentStroke = null;
+  ctx.fillStyle = '#0d0d22';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  updateStats();
+}
+
+function freezeAll() {
+  // Freeze all current stroke points in place
+  strokes.forEach(s => { s.frozen = true; });
+  currentStroke = null;
+  isDrawing = false;
+}
+
+// Drawing input
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  if (e.touches) {
+    return {
+      x: (e.touches[0].clientX - rect.left) * scaleX,
+      y: (e.touches[0].clientY - rect.top) * scaleY
+    };
+  }
+  return {
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top) * scaleY
+  };
+}
+
+function startDraw(e) {
+  e.preventDefault();
+  const pos = getPos(e);
+  isDrawing = true;
+  if (mode === 'draw') {
+    currentStroke = { points: [pos], frozen: false };
+    strokes.push(currentStroke);
+  } else {
+    // Erase: remove strokes near point
+    const r = parseInt(brushSlider.value) * 2;
+    strokes = strokes.filter(s => {
+      for (const p of s.points) {
+        const dx = p.x - pos.x, dy = p.y - pos.y;
+        if (dx*dx + dy*dy < r*r) return false;
+      }
+      return true;
+    });
+    redraw();
+  }
+}
+
+function moveDraw(e) {
+  if (!isDrawing || mode !== 'draw') return;
+  e.preventDefault();
+  const pos = getPos(e);
+  if (currentStroke) {
+    currentStroke.points.push(pos);
+  }
+}
+
+function endDraw(e) {
+  if (e) e.preventDefault();
+  isDrawing = false;
+  currentStroke = null;
+  updateStats();
+}
+
+canvas.addEventListener('mousedown', startDraw);
+canvas.addEventListener('mousemove', moveDraw);
+canvas.addEventListener('mouseup', endDraw);
+canvas.addEventListener('mouseleave', endDraw);
+canvas.addEventListener('touchstart', startDraw, { passive: false });
+canvas.addEventListener('touchmove', moveDraw, { passive: false });
+canvas.addEventListener('touchend', endDraw, { passive: false });
+canvas.addEventListener('touchcancel', endDraw, { passive: false });
+
+// Rendering
+function redraw() {
+  // Fade background for trail effect
+  const trailAlpha = 1 - (parseInt(trailSlider.value) / 100) * 0.95;
+  ctx.fillStyle = `rgba(13,13,34,${trailAlpha})`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Draw all strokes
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  for (const stroke of strokes) {
+    if (stroke.points.length < 2) {
+      // Draw single dots
+      for (const p of stroke.points) {
+        ctx.fillStyle = p.c || colorPicker.value;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      continue;
+    }
+
+    ctx.strokeStyle = stroke.points[0].c || colorPicker.value;
+    ctx.lineWidth = stroke.points[0].size || parseInt(brushSlider.value);
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+    for (let i = 1; i < stroke.points.length; i++) {
+      ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+    }
+    ctx.stroke();
+
+    // Glow effect
+    ctx.strokeStyle = stroke.points[0].c || colorPicker.value;
+    ctx.lineWidth = (stroke.points[0].size || parseInt(brushSlider.value)) * 2.5;
+    ctx.globalAlpha = 0.15;
+    ctx.beginPath();
+    ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+    for (let i = 1; i < stroke.points.length; i++) {
+      ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Draw frozen particles
+  for (const p of frozenParticles) {
+    ctx.fillStyle = p.c;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r || 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// Animation loop — gravity simulation
+function animate() {
+  const gravity = parseInt(gravitySlider.value) / 100;
+
+  if (gravity > 0) {
+    const gravityForce = gravity * 2;
+
+    // Update current (active) stroke
+    if (currentStroke && !currentStroke.frozen) {
+      const pts = currentStroke.points;
+      const lastPt = pts[pts.length - 1];
+      const baseY = lastPt.y;
+      const baseSize = lastPt.size || parseInt(brushSlider.value);
+      const baseColor = lastPt.c || colorPicker.value;
+
+      // Create falling particles from recent points
+      const spawnRate = Math.max(1, Math.floor(gravityForce * 3));
+      for (let i = 0; i < spawnRate && pts.length > 0; i++) {
+        const idx = pts.length - 1 - Math.floor(Math.random() * Math.min(5, pts.length));
+        const src = pts[idx];
+        frozenParticles.push({
+          x: src.x + (Math.random() - 0.5) * baseSize * 0.5,
+          y: src.y,
+          vx: (Math.random() - 0.5) * 1.5 * gravityForce,
+          vy: Math.random() * 0.5,
+          r: baseSize * 0.3 + Math.random() * 2,
+          c: src.c || baseColor,
+          life: 1.0
+        });
+      }
+
+      // Remove points that have fallen
+      const pointsToRemove = [];
+      pts.forEach((p, idx) => {
+        if (p.y > canvas.height + 20) pointsToRemove.push(idx);
+      });
+      if (pointsToRemove.length > 0) {
+        pointsToRemove.reverse().forEach(i => pts.splice(i, 1));
+      }
+    }
+
+    // Update frozen particles
+    for (let i = frozenParticles.length - 1; i >= 0; i--) {
+      const p = frozenParticles[i];
+      p.vy += gravityForce * 0.3;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= 0.003;
+
+      // Bounce off bottom
+      if (p.y > canvas.height - p.r) {
+        p.y = canvas.height - p.r;
+        p.vy *= -0.4;
+        p.vx *= 0.8;
+      }
+
+      // Bounce off walls
+      if (p.x < 0 || p.x > canvas.width) p.vx *= -0.6;
+
+      if (p.life <= 0) frozenParticles.splice(i, 1);
+    }
+  }
+
+  redraw();
+  updateStats();
+  requestAnimationFrame(animate);
+}
+
+function updateStats() {
+  const totalDots = strokes.reduce((sum, s) => sum + s.points.length, 0);
+  strokeCountEl.textContent = `Strokes: ${strokes.length}`;
+  dotCountEl.textContent = `Particles: ${frozenParticles.length}`;
+}
+
+// Start
+redraw();
+animate();
+</script>
+</body>
+</html>

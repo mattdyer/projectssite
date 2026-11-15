@@ -41,7 +41,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [x] **Spirograph** — Draw spirograph patterns by adjusting gear parameters.
 - [x] **Music Visualizer** — Canvas visualizes microphone input as bars, circles, or waves.
 - [x] **Kaleidoscope** — Mirror the mouse cursor in real time to create kaleidoscopic patterns.
-- [ ] **Gravity Drawing** — Draw strokes that fall with simulated gravity.
+- [x] **Gravity Drawing** — Draw strokes that fall with simulated gravity.
 - [ ] **Digital Clock with Particle Background** — Time display with animated particles.
 
 ## Utilities / Fun
