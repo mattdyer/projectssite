@@ -48,7 +48,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 
 |- [x] **Stopwatch / Timer** — Lap times, countdown timer with visual alarm.
 - [x] **Dice Roller** — Roll 1–N dice, show results, keep history.
-- [ ] **Coin Flip** — Animated coin flip with heads/tails history.
+- [x] **Coin Flip** — Animated coin flip with heads/tails history.
 - [ ] **Random Name Picker** — Paste names, randomly pick one.
 - [ ] **Color Palette Generator** — Generate harmonious color palettes from a seed.
 - [x] **Typing Speed Test** — Type the displayed text as fast as possible, WPM + accuracy.

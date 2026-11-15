@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coin Flip</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  color: #fff;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: hidden;
+}
+
+h1 {
+  margin-top: 30px;
+  font-size: 2rem;
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+  letter-spacing: 2px;
+}
+
+.stats {
+  margin: 15px 0;
+  font-size: 1.1rem;
+  display: flex;
+  gap: 30px;
+}
+
+.stats span {
+  background: rgba(255,255,255,0.1);
+  padding: 8px 20px;
+  border-radius: 20px;
+}
+
+.coin-container {
+  margin: 25px 0;
+  perspective: 1000px;
+}
+
+.coin {
+  width: 180px;
+  height: 180px;
+  position: relative;
+  transform-style: preserve-3d;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.coin.flipping {
+  animation: flip 1.5s ease-out forwards;
+}
+
+@keyframes flip {
+  0% { transform: rotateY(0deg) translateY(0); }
+  25% { transform: rotateY(900deg) translateY(-200px); }
+  50% { transform: rotateY(1800deg) translateY(-300px); }
+  75% { transform: rotateY(2700deg) translateY(-150px); }
+  100% { transform: rotateY(3600deg) translateY(0); }
+}
+
+.coin-face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  font-weight: bold;
+  backface-visibility: hidden;
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.4), inset 0 0 20px rgba(0,0,0,0.3);
+}
+
+.coin-heads {
+  background: radial-gradient(circle at 30% 30%, #ffd700, #b8860b);
+  border: 4px solid #daa520;
+  color: #5c3a00;
+}
+
+.coin-tails {
+  background: radial-gradient(circle at 30% 30%, #c0c0c0, #808080);
+  border: 4px solid #a9a9a9;
+  color: #333;
+  transform: rotateY(180deg);
+}
+
+.coin-heads::after {
+  content: "H";
+}
+
+.coin-tails::after {
+  content: "T";
+}
+
+#flip-btn {
+  margin: 20px 0;
+  padding: 15px 50px;
+  font-size: 1.3rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 30px;
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  color: #333;
+  cursor: pointer;
+  box-shadow: 0 5px 20px rgba(255, 215, 0, 0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
+  letter-spacing: 1px;
+}
+
+#flip-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 30px rgba(255, 215, 0, 0.5);
+}
+
+#flip-btn:active {
+  transform: scale(0.95);
+}
+
+#flip-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.result-label {
+  font-size: 1.5rem;
+  margin: 10px 0;
+  min-height: 40px;
+  text-shadow: 0 0 10px currentColor;
+}
+
+.result-label.heads { color: #ffd700; }
+.result-label.tails { color: #c0c0c0; }
+
+.history {
+  margin: 15px 0 40px;
+  width: 90%;
+  max-width: 400px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: rgba(255,255,255,0.05);
+  border-radius: 15px;
+  padding: 15px;
+}
+
+.history h3 {
+  margin-bottom: 10px;
+  text-align: center;
+  font-size: 1rem;
+  opacity: 0.7;
+}
+
+.history-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.history-item.h { background: rgba(255, 215, 0, 0.15); }
+.history-item.t { background: rgba(192, 192, 192, 0.15); }
+
+.history-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.history-item.h .history-dot { background: #ffd700; }
+.history-item.t .history-dot { background: #c0c0c0; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.clear-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+  padding: 5px 15px;
+  border-radius: 15px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  margin-top: 10px;
+  transition: background 0.2s;
+}
+
+.clear-btn:hover { background: rgba(255,255,255,0.2); }
+
+.streak {
+  font-size: 0.9rem;
+  opacity: 0.6;
+  margin-top: 5px;
+}
+
+@media (max-width: 480px) {
+  h1 { font-size: 1.5rem; }
+  .coin { width: 140px; height: 140px; }
+  #flip-btn { padding: 12px 40px; font-size: 1.1rem; }
+  .stats { font-size: 0.9rem; gap: 15px; }
+}
+</style>
+</head>
+<body>
+
+<h1>🪙 Coin Flip</h1>
+
+<div class="stats">
+  <span>Heads: <strong id="heads-count">0</strong></span>
+  <span>Tails: <strong id="tails-count">0</strong></span>
+  <span>Total: <strong id="total-count">0</strong></span>
+</div>
+
+<div class="coin-container">
+  <div class="coin" id="coin">
+    <div class="coin-face coin-heads"></div>
+    <div class="coin-face coin-tails"></div>
+  </div>
+</div>
+
+<div class="result-label" id="result-label"></div>
+
+<button id="flip-btn">FLIP COIN</button>
+
+<p class="streak" id="streak"></p>
+
+<div class="history">
+  <h3>Flip History</h3>
+  <ul class="history-list" id="history-list"></ul>
+  <button class="clear-btn" id="clear-btn">Clear History</button>
+</div>
+
+<script>
+(function() {
+  const coin = document.getElementById('coin');
+  const flipBtn = document.getElementById('flip-btn');
+  const resultLabel = document.getElementById('result-label');
+  const headsCount = document.getElementById('heads-count');
+  const tailsCount = document.getElementById('tails-count');
+  const totalCount = document.getElementById('total-count');
+  const historyList = document.getElementById('history-list');
+  const streakEl = document.getElementById('streak');
+  const clearBtn = document.getElementById('clear-btn');
+
+  let heads = 0, tails = 0;
+  let history = [];
+  let lastResult = null;
+  let streak = 0;
+  let flipping = false;
+
+  function updateStats() {
+    headsCount.textContent = heads;
+    tailsCount.textContent = tails;
+    totalCount.textContent = heads + tails;
+  }
+
+  function updateStreak() {
+    if (streak >= 3) {
+      streakEl.textContent = `🔥 ${streak} in a row!`;
+      streakEl.style.opacity = '1';
+    } else {
+      streakEl.textContent = '';
+    }
+  }
+
+  function addHistory(result) {
+    const li = document.createElement('li');
+    const cls = result === 'heads' ? 'h' : 't';
+    li.className = `history-item ${cls}`;
+    li.innerHTML = `<span class="history-dot"></span><span>${result.charAt(0).toUpperCase() + result.slice(1)}</span>`;
+    historyList.prepend(li);
+    history.unshift(result);
+    if (history.length > 50) {
+      history.pop();
+      historyList.removeChild(historyList.lastChild);
+    }
+  }
+
+  function flipCoin() {
+    if (flipping) return;
+    flipping = true;
+    flipBtn.disabled = true;
+    resultLabel.textContent = '';
+    resultLabel.className = 'result-label';
+
+    const result = Math.random() < 0.5 ? 'heads' : 'tails';
+    const finalRotation = result === 'tails' ? 3600 + 180 : 3600;
+
+    coin.style.transition = 'none';
+    coin.style.transform = 'rotateY(0deg)';
+
+    requestAnimationFrame(() => {
+      coin.style.transition = 'transform 1.5s cubic-bezier(0.25, 0.1, 0.25, 1)';
+      coin.style.transform = `rotateY(${finalRotation}deg)`;
+    });
+
+    setTimeout(() => {
+      if (result === 'heads') {
+        heads++;
+        coin.style.transition = 'none';
+        coin.style.transform = 'rotateY(0deg)';
+      } else {
+        tails++;
+        coin.style.transition = 'none';
+        coin.style.transform = 'rotateY(180deg)';
+      }
+
+      resultLabel.textContent = result.charAt(0).toUpperCase() + result.slice(1) + '!';
+      resultLabel.className = `result-label ${result}`;
+
+      if (result === lastResult) {
+        streak++;
+      } else {
+        streak = 1;
+      }
+      lastResult = result;
+
+      addHistory(result);
+      updateStats();
+      updateStreak();
+
+      flipping = false;
+      flipBtn.disabled = false;
+    }, 1550);
+  }
+
+  flipBtn.addEventListener('click', flipCoin);
+
+  // Allow tapping the coin itself too
+  coin.addEventListener('click', flipCoin);
+
+  // Keyboard support
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.code === 'Enter') {
+      e.preventDefault();
+      flipCoin();
+    }
+  });
+
+  clearBtn.addEventListener('click', () => {
+    history = [];
+    historyList.innerHTML = '';
+    streakEl.textContent = '';
+  });
+
+  updateStats();
+})();
+</script>
+
+</body>
+</html>
