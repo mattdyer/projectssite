@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Random Name Picker</title>
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --card: #1a1a2e;
+    --accent: #e94560;
+    --accent2: #0f3460;
+    --text: #eee;
+    --muted: #888;
+    --gold: #f5c518;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    overflow-x: hidden;
+  }
+  h1 {
+    font-size: clamp(1.6rem, 5vw, 2.5rem);
+    margin-bottom: 6px;
+    background: linear-gradient(135deg, var(--accent), var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .subtitle { color: var(--muted); margin-bottom: 24px; font-size: 0.95rem; }
+
+  .container {
+    width: 100%;
+    max-width: 560px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .input-section {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid #2a2a4a;
+  }
+  label { font-size: 0.9rem; color: var(--muted); margin-bottom: 8px; display: block; }
+  textarea {
+    width: 100%;
+    height: 140px;
+    background: #12121f;
+    border: 1px solid #2a2a4a;
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 1rem;
+    padding: 12px;
+    resize: vertical;
+    font-family: inherit;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  .char-count { text-align: right; font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+  .options {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .option input { accent-color: var(--accent); }
+
+  .btn-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  button {
+    flex: 1;
+    min-width: 140px;
+    padding: 14px 20px;
+    border: none;
+    border-radius: 12px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  button:active { transform: scale(0.97); }
+  .btn-pick {
+    background: linear-gradient(135deg, var(--accent), #c0392b);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(233, 69, 96, 0.4);
+  }
+  .btn-pick:hover { box-shadow: 0 4px 28px rgba(233, 69, 96, 0.6); }
+  .btn-shuffle {
+    background: var(--accent2);
+    color: #fff;
+  }
+  .btn-clear {
+    background: #2a2a3a;
+    color: var(--muted);
+  }
+
+  /* Result area */
+  .result-area {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 30px 20px;
+    background: var(--card);
+    border-radius: 16px;
+    border: 2px solid var(--accent);
+    position: relative;
+    overflow: hidden;
+  }
+  .result-area.active { display: flex; animation: popIn 0.4s ease; }
+  .result-name {
+    font-size: clamp(2rem, 8vw, 3.5rem);
+    font-weight: 800;
+    text-align: center;
+    background: linear-gradient(135deg, var(--gold), #ff6b6b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    word-break: break-word;
+  }
+  .result-label { color: var(--muted); font-size: 0.9rem; }
+
+  /* Spinning animation */
+  .spinning .result-name {
+    animation: spinText 0.08s steps(1) infinite;
+  }
+  @keyframes spinText {
+    0% { opacity: 1; transform: translateY(0); }
+    50% { opacity: 0.7; transform: translateY(-4px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes popIn {
+    0% { transform: scale(0.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* Confetti canvas */
+  #confetti {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* History */
+  .history {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 16px 20px;
+    border: 1px solid #2a2a4a;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .history h3 { font-size: 0.85rem; color: var(--muted); margin-bottom: 8px; }
+  .history-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid #1a1a2e;
+    font-size: 0.85rem;
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-num { color: var(--accent); font-weight: 600; min-width: 30px; }
+  .history-name { flex: 1; }
+  .history-time { color: var(--muted); font-size: 0.75rem; }
+
+  /* Confetti burst for winner */
+  .winner-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 3px solid var(--gold);
+    animation: ringExpand 0.8s ease-out forwards;
+    pointer-events: none;
+  }
+  @keyframes ringExpand {
+    0% { width: 0; height: 0; opacity: 1; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+    100% { width: 300px; height: 300px; opacity: 0; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+  }
+
+  .picker-mode-label {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: -8px;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="confetti"></canvas>
+
+<h1>🎲 Random Name Picker</h1>
+<p class="subtitle">Paste names, hit pick — let fate decide!</p>
+
+<div class="container">
+  <div class="input-section">
+    <label for="names">Enter names (one per line, comma, or semicolon separated):</label>
+    <textarea id="names" placeholder="Alice&#10;Bob&#10;Charlie&#10;Diana&#10;Eve"></textarea>
+    <div class="char-count" id="charCount">0 names</div>
+
+    <div class="options" style="margin-top: 12px;">
+      <label class="option">
+        <input type="checkbox" id="noRepeat"> No repeats (remove picked)
+      </label>
+      <label class="option">
+        <label class="option">
+        <input type="checkbox" id="pickAll"> Pick all (random order)
+      </label>
+    </div>
+
+    <div class="picker-mode-label" id="modeLabel">Mode: Pick 1 name</div>
+
+    <div class="btn-row" style="margin-top: 14px;">
+      <button class="btn-pick" id="btnPick">🎰 Pick!</button>
+      <button class="btn-shuffle" id="btnShuffle">🔀 Shuffle All</button>
+      <button class="btn-clear" id="btnClear">Clear</button>
+    </div>
+  </div>
+
+  <div class="result-area" id="resultArea">
+    <span class="result-label" id="resultLabel">And the winner is…</span>
+    <div class="result-name" id="resultName"></div>
+  </div>
+
+  <div class="history" id="historySection" style="display:none;">
+    <h3>Pick History</h3>
+    <div id="historyList"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const namesEl = document.getElementById('names');
+  const charCountEl = document.getElementById('charCount');
+  const noRepeatEl = document.getElementById('noRepeat');
+  const pickAllEl = document.getElementById('pickAll');
+  const modeLabelEl = document.getElementById('modeLabel');
+  const resultArea = document.getElementById('resultArea');
+  const resultName = document.getElementById('resultName');
+  const resultLabel = document.getElementById('resultLabel');
+  const btnPick = document.getElementById('btnPick');
+  const btnShuffle = document.getElementById('btnShuffle');
+  const btnClear = document.getElementById('btnClear');
+  const historySection = document.getElementById('historySection');
+  const historyList = document.getElementById('historyList');
+  const confettiCanvas = document.getElementById('confetti');
+  const confettiCtx = confettiCanvas.getContext('2d');
+
+  let history = [];
+  let available = [];
+  let confettiPieces = [];
+  let confettiAnim = null;
+
+  function getNames() {
+    return namesEl.value
+      .split(/[\n,;]+/)
+      .map(n => n.trim())
+      .filter(n => n.length > 0);
+  }
+
+  function updateCount() {
+    const names = getNames();
+    charCountEl.textContent = names.length + ' name' + (names.length !== 1 ? 's' : '');
+  }
+
+  namesEl.addEventListener('input', updateCount);
+  noRepeatEl.addEventListener('change', updateMode);
+  pickAllEl.addEventListener('change', updateMode);
+
+  function updateMode() {
+    if (pickAllEl.checked) {
+      modeLabelEl.textContent = 'Mode: Pick all (random order)';
+    } else if (noRepeatEl.checked) {
+      modeLabelEl.textContent = 'Mode: Pick 1 name (no repeats)';
+    } else {
+      modeLabelEl.textContent = 'Mode: Pick 1 name';
+    }
+  }
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  // Spinning animation
+  let spinInterval = null;
+  function spinNames(callback) {
+    const names = getNames();
+    if (names.length === 0) return;
+    resultArea.classList.add('active', 'spinning');
+    let count = 0;
+    const totalSpins = 20 + Math.floor(Math.random() * 10);
+    const baseSpeed = 60;
+    const maxSpeed = 800;
+
+    function tick() {
+      resultName.textContent = names[Math.floor(Math.random() * names.length)];
+      count++;
+      if (count < totalSpins) {
+        // Slow down over time
+        const progress = count / totalSpins;
+        const delay = baseSpeed + (maxSpeed - baseSpeed) * Math.pow(progress, 2);
+        spinInterval = setTimeout(tick, delay);
+      } else {
+        clearTimeout(spinInterval);
+        resultArea.classList.remove('spinning');
+        callback();
+      }
+    }
+    tick();
+  }
+
+  function addHistory(name) {
+    const now = new Date();
+    const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    history.unshift({ name, time, num: history.length + 1 });
+    renderHistory();
+  }
+
+  function renderHistory() {
+    if (history.length === 0) {
+      historySection.style.display = 'none';
+      return;
+    }
+    historySection.style.display = 'block';
+    historyList.innerHTML = history.map(h =>
+      `<div class="history-item">
+        <span class="history-num">#${h.num}</span>
+        <span class="history-name">${escapeHTML(h.name)}</span>
+        <span class="history-time">${h.time}</span>
+      </div>`
+    ).join('');
+  }
+
+  function escapeHTML(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  // Confetti
+  function resizeCanvas() {
+    confettiCanvas.width = window.innerWidth;
+    confettiCanvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  function launchConfetti() {
+    confettiPieces = [];
+    const colors = ['#e94560', '#f5c518', '#0f3460', '#2ecc71', '#3498db', '#e74c3c', '#ff6b6b', '#ffd93d'];
+    for (let i = 0; i < 150; i++) {
+      confettiPieces.push({
+        x: Math.random() * confettiCanvas.width,
+        y: -20 - Math.random() * 200,
+        w: 6 + Math.random() * 6,
+        h: 4 + Math.random() * 4,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        vx: (Math.random() - 0.5) * 4,
+        vy: 2 + Math.random() * 4,
+        rot: Math.random() * 360,
+        rv: (Math.random() - 0.5) * 10,
+        opacity: 1
+      });
+    }
+    animateConfetti();
+  }
+
+  function animateConfetti() {
+    confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+    let alive = false;
+    confettiPieces.forEach(p => {
+      if (p.opacity <= 0) return;
+      alive = true;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.1;
+      p.rot += p.rv;
+      if (p.y > confettiCanvas.height + 20) {
+        p.opacity -= 0.02;
+      }
+      confettiCtx.save();
+      confettiCtx.translate(p.x, p.y);
+      confettiCtx.rotate(p.rot * Math.PI / 180);
+      confettiCtx.globalAlpha = Math.max(0, p.opacity);
+      confettiCtx.fillStyle = p.color;
+      confettiCtx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      confettiCtx.restore();
+    });
+    if (alive) {
+      confettiAnim = requestAnimationFrame(animateConfetti);
+    } else {
+      confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+      confettiAnim = null;
+    }
+  }
+
+  function showRing() {
+    const ring = document.createElement('div');
+    ring.className = 'winner-ring';
+    resultArea.appendChild(ring);
+    setTimeout(() => ring.remove(), 900);
+  }
+
+  function doPick(singleName) {
+    const names = getNames();
+    if (names.length === 0) return;
+
+    if (singleName) {
+      spinNames(() => {
+        const availableNames = noRepeatEl.checked ? available : names;
+        if (availableNames.length === 0) {
+          resultName.textContent = 'No names left!';
+          resultLabel.textContent = 'Reset with new names';
+          return;
+        }
+        const winner = availableNames[Math.floor(Math.random() * availableNames.length)];
+        resultName.textContent = winner;
+        resultLabel.textContent = '🎉 And the winner is… 🎉';
+        launchConfetti();
+        showRing();
+        addHistory(winner);
+
+        if (noRepeatEl.checked) {
+          const idx = available.indexOf(winner);
+          if (idx > -1) available.splice(idx, 1);
+          if (available.length === 0) {
+            btnPick.disabled = true;
+            btnPick.textContent = '✓ All Picked!';
+          }
+        }
+      });
+    } else {
+      // Pick all
+      const shuffled = shuffle([...names]);
+      resultArea.classList.add('active');
+      resultArea.classList.remove('spinning');
+      resultName.style.fontSize = '1.2rem';
+      resultName.innerHTML = shuffled.map((n, i) =>
+        `<span style="display:block; padding: 4px 0; ${i === 0 ? 'color: var(--gold); font-weight: 700;' : ''}">${i + 1}. ${escapeHTML(n)}</span>`
+      ).join('');
+      resultLabel.textContent = '🔀 Random Order';
+      launchConfetti();
+      shuffled.forEach(n => addHistory(n));
+      if (noRepeatEl.checked) {
+        available = [];
+        btnPick.disabled = true;
+        btnPick.textContent = '✓ All Picked!';
+      }
+    }
+  }
+
+  btnPick.addEventListener('click', () => {
+    btnPick.disabled = true;
+    const single = !pickAllEl.checked;
+    doPick(single);
+    setTimeout(() => { btnPick.disabled = false; }, 1500);
+  });
+
+  btnShuffle.addEventListener('click', () => {
+    const names = getNames();
+    if (names.length === 0) return;
+    const shuffled = shuffle([...names]);
+    namesEl.value = shuffled.join('\n');
+    updateCount();
+  });
+
+  btnClear.addEventListener('click', () => {
+    namesEl.value = '';
+    updateCount();
+    resultArea.classList.remove('active');
+    resultName.style.fontSize = '';
+    available = [];
+    history = [];
+    renderHistory();
+    btnPick.textContent = '🎰 Pick!';
+    btnPick.disabled = false;
+  });
+
+  // Touch-friendly: allow tap on result to dismiss
+  resultArea.addEventListener('click', (e) => {
+    if (e.target === resultArea || e.target === resultLabel || e.target === resultName) {
+      resultArea.classList.remove('active');
+    }
+  });
+
+  // Keyboard shortcut: Enter to pick
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.ctrlKey) {
+      btnPick.click();
+    }
+  });
+
+  updateMode();
+})();
+</script>
+</body>
+</html>

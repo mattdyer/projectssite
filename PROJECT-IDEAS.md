@@ -46,13 +46,13 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 
 ## Utilities / Fun
 
-|- [x] **Stopwatch / Timer** — Lap times, countdown timer with visual alarm.
+- [x] **Stopwatch / Timer** — Lap times, countdown timer with visual alarm.
 - [x] **Dice Roller** — Roll 1–N dice, show results, keep history.
 - [x] **Coin Flip** — Animated coin flip with heads/tails history.
-- [ ] **Random Name Picker** — Paste names, randomly pick one.
+- [x] **Random Name Picker** — Paste names, randomly pick one.
 - [ ] **Color Palette Generator** — Generate harmonious color palettes from a seed.
-|- [x] **Typing Speed Test** — Type the displayed text as fast as possible, WPM + accuracy.
-|- [x] **Number Guessing Game** — Computer picks a number, user guesses with high/low hints.
+- [x] **Typing Speed Test** — Type the displayed text as fast as possible, WPM + accuracy.
+- [x] **Number Guessing Game** — Computer picks a number, user guesses with high/low hints.
 - [x] **Rock Paper Scissors** — Play vs computer, animated, track score.
 - [ ] **Mad Libs Generator** — Prompt for words, assemble a silly story.
 - [ ] **Joke of the Day** — Fetch a random joke from an API and display it.
