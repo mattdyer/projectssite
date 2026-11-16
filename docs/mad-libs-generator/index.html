@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mad Libs Generator</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --card: #16213e;
+    --accent: #e94560;
+    --accent2: #0f3460;
+    --text: #eee;
+    --input-bg: #0f3460;
+    --highlight: #ffd700;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+  }
+  h1 {
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    color: var(--accent);
+    text-align: center;
+    margin: 1rem 0;
+    text-shadow: 2px 2px 4px rgba(0,0,0,.4);
+  }
+  h1 span { color: var(--highlight); }
+  .subtitle {
+    text-align: center;
+    color: #aaa;
+    margin-bottom: 1.5rem;
+    font-style: italic;
+  }
+  .container {
+    width: 100%;
+    max-width: 700px;
+  }
+  .story-select {
+    text-align: center;
+    margin-bottom: 1.2rem;
+  }
+  .story-select select {
+    padding: .5rem 1rem;
+    font-size: 1rem;
+    border-radius: 8px;
+    border: 2px solid var(--accent);
+    background: var(--input-bg);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .8rem;
+  }
+  @media (max-width: 500px) {
+    .form-grid { grid-template-columns: 1fr; }
+  }
+  .input-group {
+    background: var(--card);
+    border-radius: 10px;
+    padding: .8rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+  }
+  .input-group label {
+    font-size: .8rem;
+    color: var(--accent);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .input-group input {
+    border: none;
+    border-radius: 6px;
+    padding: .5rem .7rem;
+    font-size: 1rem;
+    background: var(--input-bg);
+    color: var(--text);
+    outline: none;
+    transition: border .2s;
+  }
+  .input-group input:focus {
+    border: 2px solid var(--accent);
+  }
+  .input-group input::placeholder { color: #667; }
+  .btn-row {
+    display: flex;
+    gap: .8rem;
+    margin-top: 1.2rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  button {
+    padding: .7rem 1.8rem;
+    font-size: 1rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    transition: transform .15s, box-shadow .15s;
+  }
+  button:active { transform: scale(.96); }
+  .btn-generate {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(233,69,96,.4);
+  }
+  .btn-generate:hover { box-shadow: 0 6px 20px rgba(233,69,96,.6); }
+  .btn-new {
+    background: var(--accent2);
+    color: var(--highlight);
+    box-shadow: 0 4px 15px rgba(15,52,96,.4);
+  }
+  .result-card {
+    display: none;
+    margin-top: 1.5rem;
+    background: var(--card);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border-left: 5px solid var(--highlight);
+    animation: slideIn .4s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .result-card h2 {
+    color: var(--highlight);
+    margin-bottom: .8rem;
+    font-size: 1.3rem;
+  }
+  .result-text {
+    line-height: 1.9;
+    font-size: 1.05rem;
+  }
+  .result-text .filled {
+    color: var(--accent);
+    font-weight: 700;
+    background: rgba(233,69,96,.15);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  .copy-btn {
+    margin-top: 1rem;
+    background: transparent;
+    border: 2px solid var(--accent);
+    color: var(--accent);
+    font-size: .85rem;
+    padding: .4rem 1rem;
+  }
+  .copy-btn:hover { background: var(--accent); color: #fff; }
+  .emoji-bar {
+    text-align: center;
+    font-size: 1.5rem;
+    margin: .5rem 0;
+    letter-spacing: .3rem;
+  }
+</style>
+</head>
+<body>
+
+<h1>🎉 Mad <span>Libs</span> Generator</h1>
+<p class="subtitle">Fill in the blanks, then read the silly story!</p>
+<div class="emoji-bar">🤣 📝 🎭 ✨</div>
+
+<div class="container">
+  <div class="story-select">
+    <label for="storySelect" style="margin-right:.5rem; color:#aaa;">Story:</label>
+    <select id="storySelect">
+      <option value="0">A Day at the Park</option>
+      <option value="1">The Inventor's Lab</option>
+      <option value="2">Space Adventure</option>
+      <option value="3">The Cooking Catastrophe</option>
+      <option value="4">The Haunted Library</option>
+    </select>
+  </div>
+
+  <div class="form-grid" id="formGrid"></div>
+
+  <div class="btn-row">
+    <button class="btn-generate" id="btnGenerate">🎲 Generate Story</button>
+    <button class="btn-new" id="btnNew">🔄 New Story</button>
+  </div>
+
+  <div class="result-card" id="resultCard">
+    <h2>📖 Your Mad Lib:</h2>
+    <div class="result-text" id="resultText"></div>
+    <button class="copy-btn" id="btnCopy">📋 Copy to Clipboard</button>
+  </div>
+</div>
+
+<script>
+const stories = [
+  {
+    name: "A Day at the Park",
+    inputs: [
+      { label: "Adjective", id: "adj1", placeholder: "e.g., soggy" },
+      { label: "Animal", id: "animal", placeholder: "e.g., platypus" },
+      { label: "Verb (past tense)", id: "verb1", placeholder: "e.g., danced" },
+      { label: "Noun", id: "noun1", placeholder: "e.g., trombone" },
+      { label: "Number", id: "number", placeholder: "e.g., 47" },
+      { label: "Adjective", id: "adj2", placeholder: "e.g., squeaky" },
+      { label: "Person's name", id: "name1", placeholder: "e.g., Brenda" },
+      { label: "Verb", id: "verb2", placeholder: "e.g., juggle" }
+    ],
+    templates: [
+      "Yesterday, I went to the {adj1} park and saw a giant {animal}. It {verb1} around in circles while wearing a {noun1} on its head. I counted exactly {number} {adj2} leaves scattered across the grass.\n\nNext to me, {name1} was trying to {verb2} oranges, but they kept rolling away. The {animal} then {verb1} toward {name1}, who screamed and dropped all the oranges. We both ended up eating them anyway. It was the most {adj1} day ever.",
+
+      "My friend and I visited the {adj1} park on a sunny morning. A {animal} waddled past us holding a {noun1} in its mouth. \"That's {number} times weirder than anything I've seen today,\" my friend said. The {adj2} leaves rustled even though there was no wind.\n\n{name1}, a professional {verb}er, decided to demonstrate their talent. The {animal} got jealous and stole the {noun1}. {name1} chased it through the park while I filmed the whole thing. Best. Day. Ever."
+    ]
+  },
+  {
+    name: "The Inventor's Lab",
+    inputs: [
+      { label: "Adjective", id: "adj1", placeholder: "e.g., wobbly" },
+      { label: "Food", id: "food", placeholder: "e.g., spaghetti" },
+      { label: "Body part", id: "body", placeholder: "e.g., elbow" },
+      { label: "Verb", id: "verb1", placeholder: "e.g., explode" },
+      { label: "Noun", id: "noun1", placeholder: "e.g., toaster" },
+      { label: "Adjective", id: "adj2", placeholder: "e.g., radioactive" },
+      { label: "Exclamation", id: "exclaim", placeholder: "e.g., Whoa" },
+      { label: "Animal (plural)", id: "animal", placeholder: "e.g., hamsters" }
+    ],
+    templates: [
+      "Professor {adj1} was working in their lab when they accidentally mixed {food} with their {body} gel. \"Don't do that,\" warned the lab assistant. But it was too late — the {noun1} began to {verb1} in a very {adj2} way.\n\n{exclaim}! The {noun1} started growing legs and hopping around. It recruited a team of {animal} to help it escape. The professor chased them through every room, yelling about {food} being a \"critical ingredient.\"\n\nThey never did figure out what the {noun1} was supposed to do. But it made a really {adj2} smoothie."
+    ]
+  },
+  {
+    name: "Space Adventure",
+    inputs: [
+      { label: "Planet name", id: "planet", placeholder: "e.g., Zog" },
+      { label: "Adjective", id: "adj1", placeholder: "e.g., glittery" },
+      { label: "Verb (past tense)", id: "verb1", placeholder: "e.g., surfed" },
+      { label: "Noun", id: "noun1", placeholder: "e.g., sandwich" },
+      { label: "Adjective", id: "adj2", placeholder: "e.g., smelly" },
+      { label: "Number", id: "number", placeholder: "e.g., 13" },
+      { label: "Body part (plural)", id: "body", placeholder: "e.g., eyebrows" },
+      { label: "Exclamation", id: "exclaim", placeholder: "e.g., Blast off" }
+    ],
+    templates: [
+      "Captain {exclaim}! I yelled as our ship landed on {planet}, a {adj1} world made entirely of {noun1}s. The {adj2} air hit us like a wall. Our mission: survive {number} hours.\n\nI {verb1} across a crater on my first try. The aliens here had {number} pairs of {body} each, which they used to express {adj2} emotions. One alien offered me a {noun1} — apparently it's currency there.\n\nWe stayed {number} hours, {verb1} the entire time. When we left, the aliens gave us a {adj2} parting gift. Best. Trip. Ever."
+    ]
+  },
+  {
+    name: "The Cooking Catastrophe",
+    inputs: [
+      { label: "Adjective", id: "adj1", placeholder: "e.g., sticky" },
+      { label: "Animal", id: "animal", placeholder: "e.g., walrus" },
+      { label: "Verb", id: "verb1", placeholder: "e.g., whisk" },
+      { label: "Noun", id: "noun1", placeholder: "e.g., spatula" },
+      { label: "Food", id: "food", placeholder: "e.g., pickles" },
+      { label: "Adjective", id: "adj2", placeholder: "e.g., lopsided" },
+      { label: "Person's name", id: "name", placeholder: "e.g., Chef Mario" },
+      { label: "Exclamation", id: "exclaim", placeholder: "e.g., Al dente!" }
+    ],
+    templates: [
+      "Chef {name} decided to cook something {adj1} for the competition. Their secret ingredient? {animal}-flavored {food}. \"It's going to be {adj2},\" they assured the judges. I wasn't so sure.\n\nThey {verb1} the mixture with a {noun1} while singing at the top of their lungs. {exclaim}! The pot exploded, covering the entire kitchen in {food}.\n\nThe judges tasted it anyway. \"It's {adj1}... and {adj2}... but also kind of {adj1}?\" said the head judge. We didn't win, but the {animal} got a free meal. {exclaim}, that's all that matters."
+    ]
+  },
+  {
+    name: "The Haunted Library",
+    inputs: [
+      { label: "Adjective", id: "adj1", placeholder: "e.g., creaky" },
+      { label: "Noun", id: "noun1", placeholder: "e.g., candle" },
+      { label: "Verb (past tense)", id: "verb1", placeholder: "e.g., whispered" },
+      { label: "Animal", id: "animal", placeholder: "e.g., crow" },
+      { label: "Adjective", id: "adj2", placeholder: "e.g., dusty" },
+      { label: "Number", id: "number", placeholder: "e.g., 99" },
+      { label: "Person's name", id: "name", placeholder: "e.g., Professor Finch" },
+      { label: "Verb (present)", id: "verb2", placeholder: "e.g., float" }
+    ],
+    templates: [
+      "The {adj1} library had been closed for {number} years. I walked inside holding a {noun1}, its flickering light revealing {adj2} bookshelves stretching into darkness.\n\nA {animal} perched on a bookshelf and {verb1} something unintelligible. {name}, the former librarian, appeared from behind a shelf. \"They {verb2} around at night,\" she said. \"The books, I mean. Not the {animal}.\"\n\nI opened a book and pages began to {verb2} like birds. {number} of them. Every single one. I dropped the {noun1}. The {animal} cawed. {name} just shrugged.\n\nI left. The {adj1} library is {adj2} again. The {animal} is probably still reading."
+    ]
+  }
+];
+
+const formGrid = document.getElementById('formGrid');
+const storySelect = document.getElementById('storySelect');
+const resultCard = document.getElementById('resultCard');
+const resultText = document.getElementById('resultText');
+const btnGenerate = document.getElementById('btnGenerate');
+const btnNew = document.getElementById('btnNew');
+const btnCopy = document.getElementById('btnCopy');
+
+function loadInputs() {
+  const story = stories[parseInt(storySelect.value)];
+  formGrid.innerHTML = '';
+  story.inputs.forEach(inp => {
+    const div = document.createElement('div');
+    div.className = 'input-group';
+    div.innerHTML = `<label for="${inp.id}">${inp.label}</label>
+                     <input type="text" id="${inp.id}" placeholder="${inp.placeholder}" autocomplete="off">`;
+    formGrid.appendChild(div);
+  });
+  resultCard.style.display = 'none';
+}
+
+function generateStory() {
+  const storyIdx = parseInt(storySelect.value);
+  const story = stories[storyIdx];
+  const values = {};
+  let allFilled = true;
+
+  story.inputs.forEach(inp => {
+    const val = document.getElementById(inp.id).value.trim();
+    if (!val) allFilled = false;
+    values[inp.id] = val || `__${inp.label}__`;
+  });
+
+  if (!allFilled) {
+    alert('Please fill in all the blanks! 🤔');
+    return;
+  }
+
+  const templateIdx = Math.floor(Math.random() * story.templates.length);
+  let text = story.templates[templateIdx];
+
+  story.inputs.forEach(inp => {
+    const regex = new RegExp(`{${inp.id}}`, 'g');
+    text = text.replace(regex, `<span class="filled">${values[inp.id]}</span>`);
+  });
+
+  // Replace any remaining __Placeholder__ with highlighted empty
+  text = text.replace(/__([^_]+)__/g, '<span class="filled">__\$1__</span>');
+
+  resultText.innerHTML = text;
+  resultCard.style.display = 'block';
+  resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function newStory() {
+  let nextVal = (parseInt(storySelect.value) + 1) % stories.length;
+  storySelect.value = nextVal;
+  loadInputs();
+  storySelect.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function copyToClipboard() {
+  const plain = resultText.innerText;
+  navigator.clipboard.writeText(plain).then(() => {
+    btnCopy.textContent = '✅ Copied!';
+    setTimeout(() => btnCopy.textContent = '📋 Copy to Clipboard', 2000);
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = plain;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btnCopy.textContent = '✅ Copied!';
+    setTimeout(() => btnCopy.textContent = '📋 Copy to Clipboard', 2000);
+  });
+}
+
+storySelect.addEventListener('change', loadInputs);
+btnGenerate.addEventListener('click', generateStory);
+btnNew.addEventListener('click', newStory);
+btnCopy.addEventListener('click', copyToClipboard);
+
+// Keyboard shortcut: Enter to generate
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.ctrlKey && !e.altKey) {
+    const tag = e.target.tagName.toLowerCase();
+    if (tag === 'input') {
+      generateStory();
+    }
+  }
+});
+
+loadInputs();
+</script>
+</body>
+</html>
