@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Joke of the Day</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    overflow: hidden;
+  }
+
+  .stars {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 0;
+  }
+
+  .star {
+    position: absolute;
+    width: 2px; height: 2px;
+    background: #fff;
+    border-radius: 50%;
+    animation: twinkle var(--dur) ease-in-out infinite;
+    opacity: 0;
+  }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 0; }
+    50% { opacity: var(--bright); }
+  }
+
+  .container {
+    position: relative; z-index: 1;
+    max-width: 600px; width: 90%;
+    text-align: center;
+    padding: 20px;
+  }
+
+  h1 {
+    font-size: 2.4rem;
+    margin-bottom: 8px;
+    background: linear-gradient(90deg, #f7b733, #fc4a1a, #f7b733);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 3s linear infinite;
+  }
+
+  @keyframes shimmer {
+    to { background-position: 200% center; }
+  }
+
+  .subtitle {
+    color: #8892b0;
+    font-size: 0.95rem;
+    margin-bottom: 30px;
+  }
+
+  .card {
+    background: rgba(255,255,255,0.07);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    padding: 36px 28px;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(247,183,51,0.15);
+  }
+
+  .joke-type {
+    display: inline-block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #f7b733;
+    margin-bottom: 16px;
+    padding: 4px 14px;
+    border-radius: 20px;
+    background: rgba(247,183,51,0.15);
+  }
+
+  .joke-setup {
+    font-size: 1.25rem;
+    line-height: 1.5;
+    margin-bottom: 18px;
+    color: #e6f1ff;
+  }
+
+  .joke-punchline {
+    font-size: 1.15rem;
+    line-height: 1.5;
+    color: #f7b733;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.5s ease 0.3s, transform 0.5s ease 0.3s;
+  }
+
+  .joke-punchline.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .joke-text {
+    font-size: 1.3rem;
+    line-height: 1.6;
+    color: #e6f1ff;
+  }
+
+  .loading {
+    font-size: 1.1rem;
+    color: #8892b0;
+  }
+
+  .loading .dots::after {
+    content: '';
+    animation: dots 1.5s steps(4, end) infinite;
+  }
+
+  @keyframes dots {
+    0% { content: ''; }
+    25% { content: '.'; }
+    50% { content: '..'; }
+    75% { content: '...'; }
+  }
+
+  .btn-group {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    padding: 14px 28px;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #f7b733, #fc4a1a);
+    color: #fff;
+  }
+
+  .btn-primary:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 24px rgba(252,74,26,0.35);
+  }
+
+  .btn-primary:active {
+    transform: scale(0.97);
+  }
+
+  .btn-secondary {
+    background: rgba(255,255,255,0.1);
+    color: #8892b0;
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+
+  .btn-secondary:hover {
+    background: rgba(255,255,255,0.18);
+    color: #fff;
+  }
+
+  .btn-secondary:active {
+    transform: scale(0.97);
+  }
+
+  .emoji-burst {
+    position: fixed;
+    font-size: 2rem;
+    pointer-events: none;
+    animation: float-up 1.5s ease-out forwards;
+    z-index: 10;
+  }
+
+  @keyframes float-up {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-120px) scale(0.3); }
+  }
+
+  .category-tags {
+    margin-top: 20px;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .category-tag {
+    font-size: 0.8rem;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.08);
+    color: #8892b0;
+    border: 1px solid rgba(255,255,255,0.1);
+    cursor: pointer;
+    transition: all 0.2s;
+    touch-action: manipulation;
+    user-select: none;
+  }
+
+  .category-tag:hover, .category-tag.active {
+    background: rgba(247,183,51,0.2);
+    color: #f7b733;
+    border-color: rgba(247,183,51,0.4);
+  }
+
+  .error-msg {
+    color: #fc4a1a;
+    font-size: 0.95rem;
+  }
+
+  .footer {
+    margin-top: 30px;
+    font-size: 0.8rem;
+    color: #4a5568;
+  }
+
+  @media (max-width: 480px) {
+    h1 { font-size: 1.8rem; }
+    .card { padding: 24px 18px; min-height: 160px; }
+    .joke-setup { font-size: 1.1rem; }
+    .joke-text { font-size: 1.1rem; }
+    .btn { padding: 12px 20px; font-size: 0.9rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stars" id="stars"></div>
+
+<div class="container">
+  <h1>🎤 Joke of the Day</h1>
+  <p class="subtitle">Fresh laughs, delivered daily</p>
+
+  <div class="card" id="card">
+    <p class="loading">Loading the funniest joke<span class="dots"></span></p>
+  </div>
+
+  <div class="btn-group">
+    <button class="btn btn-primary" id="newJokeBtn">
+      <span>😂</span> Another One
+    </button>
+    <button class="btn btn-secondary" id="categoryBtn">
+      <span>🎯</span> Category
+    </button>
+  </div>
+
+  <div class="category-tags" id="categoryTags" style="display:none;">
+    <span class="category-tag active" data-cat="Any">Any</span>
+    <span class="category-tag" data-cat="Programming">Programming</span>
+    <span class="category-tag" data-cat="Pun">Pun</span>
+    <span class="category-tag" data-cat="Spooky">Spooky</span>
+    <span class="category-tag" data-cat="Christmas">Christmas</span>
+    <span class="category-tag" data-cat="Dark">Dark</span>
+    <span class="category-tag" data-cat="Knock Knock">Knock Knock</span>
+  </div>
+
+  <p class="footer">Powered by JokeAPI · Tap or click to laugh</p>
+</div>
+
+<script>
+(function() {
+  const card = document.getElementById('card');
+  const newJokeBtn = document.getElementById('newJokeBtn');
+  const categoryBtn = document.getElementById('categoryBtn');
+  const categoryTags = document.getElementById('categoryTags');
+  const starsContainer = document.getElementById('stars');
+
+  let currentCategory = 'Any';
+
+  // Generate twinkling stars
+  for (let i = 0; i < 80; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 100 + '%';
+    star.style.setProperty('--dur', (2 + Math.random() * 4) + 's');
+    star.style.setProperty('--bright', (0.3 + Math.random() * 0.7));
+    star.style.animationDelay = (Math.random() * 4) + 's';
+    star.style.width = star.style.height = (1 + Math.random() * 2) + 'px';
+    starsContainer.appendChild(star);
+  }
+
+  // Category toggle
+  categoryBtn.addEventListener('click', () => {
+    const visible = categoryTags.style.display !== 'none';
+    categoryTags.style.display = visible ? 'none' : 'flex';
+    categoryBtn.innerHTML = visible
+      ? '<span>🎯</span> Category'
+      : '<span>✕</span> Pick Category';
+  });
+
+  document.querySelectorAll('.category-tag').forEach(tag => {
+    tag.addEventListener('click', () => {
+      document.querySelectorAll('.category-tag').forEach(t => t.classList.remove('active'));
+      tag.classList.add('active');
+      currentCategory = tag.dataset.cat;
+      categoryTags.style.display = 'none';
+      categoryBtn.innerHTML = '<span>🎯</span> Category';
+      fetchJoke();
+    });
+  });
+
+  // Emoji burst
+  function emojiBurst() {
+    const emojis = ['😂','🤣','😆','💀','😹','🎉','✨','⭐','🔥','👏'];
+    for (let i = 0; i < 6; i++) {
+      const emoji = document.createElement('div');
+      emoji.className = 'emoji-burst';
+      emoji.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      emoji.style.left = (10 + Math.random() * 80) + '%';
+      emoji.style.top = (40 + Math.random() * 40) + '%';
+      emoji.style.animationDelay = (Math.random() * 0.3) + 's';
+      document.body.appendChild(emoji);
+      setTimeout(() => emoji.remove(), 2000);
+    }
+  }
+
+  // Fetch joke from JokeAPI
+  async function fetchJoke() {
+    card.innerHTML = '<p class="loading">Loading<span class="dots"></span></p>';
+
+    const url = currentCategory === 'Any'
+      ? 'https://v2.jokeapi.dev/joke/Any?blacklistFlags=racist,sexist'
+      : `https://v2.jokeapi.dev/joke/${encodeURIComponent(currentCategory)}?blacklistFlags=racist,sexist`;
+
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (data.error) {
+        card.innerHTML = '<p class="error-msg">Oops, joke factory broke! Try another 😅</p>';
+        return;
+      }
+
+      if (data.type === 'single') {
+        card.innerHTML = `
+          <span class="joke-type">Single Joke</span>
+          <p class="joke-text">${data.joke}</p>
+        `;
+      } else {
+        card.innerHTML = `
+          <span class="joke-type">Multi Part</span>
+          <p class="joke-setup">${data.setup}</p>
+          <p class="joke-punchline" id="punchline">${data.delivery}</p>
+        `;
+        requestAnimationFrame(() => {
+          document.getElementById('punchline').classList.add('show');
+        });
+      }
+
+      emojiBurst();
+
+    } catch (err) {
+      card.innerHTML = '<p class="error-msg">Connection issue — try again! 🙃</p>';
+    }
+  }
+
+  newJokeBtn.addEventListener('click', fetchJoke);
+
+  // Keyboard support
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.code === 'Enter') {
+      e.preventDefault();
+      fetchJoke();
+    }
+  });
+
+  // Swipe support on card
+  let touchStartY = 0;
+  card.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; }, { passive: true });
+  card.addEventListener('touchend', (e) => {
+    const diff = touchStartY - e.changedTouches[0].clientY;
+    if (Math.abs(diff) > 50) fetchJoke();
+  }, { passive: true });
+
+  // Initial load
+  fetchJoke();
+})();
+</script>
+
+</body>
+</html>
