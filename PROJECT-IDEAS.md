@@ -57,7 +57,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [x] **Mad Libs Generator** — Prompt for words, assemble a silly story.
 - [x] **Joke of the Day** — Fetch a random joke from an API and display it.
 - [x] **Pomodoro Timer** — 25-min work / 5-min break cycle with visual progress.
-- [ ] **Breathing Exercise** — Animated circle expands/contracts for guided breathing.
+- [x] **Breathing Exercise** — Animated circle expands/contracts for guided breathing.
 - [ ] **QR Code Generator** — Type text, render a QR code on canvas.
 - [ ] **Password Generator** — Adjustable length, character types, copy to clipboard.
 - [ ] **Unit Converter** — Length, weight, temperature, currency conversions.

@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Breathing Exercise</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #0a0e27;
+    color: #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 300;
+    margin-bottom: 0.5rem;
+    color: #b0c4ff;
+    text-align: center;
+    letter-spacing: 0.05em;
+  }
+
+  .mode-selector {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .mode-btn {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #a0b0d0;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s;
+  }
+  .mode-btn.active {
+    background: rgba(100,140,255,0.3);
+    border-color: rgba(100,140,255,0.6);
+    color: #fff;
+  }
+  .mode-btn:hover { background: rgba(255,255,255,0.12); }
+
+  .circle-container {
+    position: relative;
+    width: 260px;
+    height: 260px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .circle-ring {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2px solid rgba(100,140,255,0.15);
+    transition: transform 0.1s;
+  }
+
+  .breathing-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(100,160,255,0.6) 0%, rgba(60,100,200,0.2) 100%);
+    transition: transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .breathing-text {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #fff;
+    text-align: center;
+    text-shadow: 0 0 10px rgba(100,160,255,0.5);
+    pointer-events: none;
+  }
+
+  .status-text {
+    font-size: 1.1rem;
+    color: #c0d0ff;
+    margin-bottom: 0.5rem;
+    height: 1.5rem;
+    text-align: center;
+  }
+
+  .timer {
+    font-size: 2rem;
+    font-weight: 200;
+    color: #8090c0;
+    margin-bottom: 1.5rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .btn {
+    background: rgba(100,140,255,0.2);
+    border: 1px solid rgba(100,140,255,0.4);
+    color: #c0d0ff;
+    padding: 0.7rem 2rem;
+    border-radius: 2rem;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s;
+    min-width: 120px;
+  }
+  .btn:hover { background: rgba(100,140,255,0.35); }
+  .btn.start { background: rgba(80,200,120,0.2); border-color: rgba(80,200,120,0.4); color: #80e0a0; }
+  .btn.start:hover { background: rgba(80,200,120,0.35); }
+
+  .cycles-display {
+    font-size: 0.85rem;
+    color: #7080a0;
+    margin-bottom: 1rem;
+  }
+
+  .stats {
+    display: flex;
+    gap: 2rem;
+    font-size: 0.8rem;
+    color: #6070a0;
+    margin-top: 0.5rem;
+  }
+  .stats span { color: #90a0d0; font-weight: 500; }
+
+  .particle {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  @media (max-width: 480px) {
+    .circle-container { width: 200px; height: 200px; }
+    .breathing-circle { width: 60px; height: 60px; }
+    h1 { font-size: 1.2rem; }
+    .mode-selector { gap: 0.3rem; }
+    .mode-btn { padding: 0.4rem 0.7rem; font-size: 0.75rem; }
+  }
+
+  /* Background gradient animation */
+  .bg-glow {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 600px;
+    height: 600px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(60,100,200,0.08) 0%, transparent 70%);
+    pointer-events: none;
+    transition: opacity 0.5s;
+  }
+</style>
+</head>
+<body>
+<div class="bg-glow" id="bgGlow"></div>
+
+<h1>Breathing Exercise</h1>
+
+<div class="mode-selector">
+  <button class="mode-btn active" data-mode="478">4-7-8 Relax</button>
+  <button class="mode-btn" data-mode="box">Box Breath</button>
+  <button class="mode-btn" data-mode="calm">Calm (4-6)</button>
+  <button class="mode-btn" data-mode="coherent">Coherent (5-5)</button>
+</div>
+
+<div class="circle-container" id="circleContainer">
+  <div class="circle-ring" id="circleRing"></div>
+  <div class="breathing-circle" id="breathingCircle">
+    <div class="breathing-text" id="breathingText">Ready</div>
+  </div>
+</div>
+
+<div class="status-text" id="statusText"></div>
+<div class="timer" id="timer">00:00</div>
+
+<div class="cycles-display" id="cyclesDisplay">Cycles: 0</div>
+
+<div class="controls">
+  <button class="btn start" id="startBtn">Start</button>
+  <button class="btn" id="resetBtn">Reset</button>
+</div>
+
+<div class="stats">
+  <div>Total: <span id="totalTime">0:00</span></div>
+  <div>Cycles: <span id="cycleCount">0</span></div>
+</div>
+
+<script>
+const modes = {
+  '478':    { inhale: 4, holdIn: 7, exhale: 8, holdOut: 0, inhaleLabel: 'Breathe In', holdInLabel: 'Hold', exhaleLabel: 'Breathe Out', holdOutLabel: 'Hold' },
+  'box':    { inhale: 4, holdIn: 4, exhale: 4, holdOut: 4, inhaleLabel: 'Breathe In', holdInLabel: 'Hold', exhaleLabel: 'Breathe Out', holdOutLabel: 'Hold' },
+  'calm':   { inhale: 4, holdIn: 0, exhale: 6, holdOut: 0, inhaleLabel: 'Breathe In', holdInLabel: '', exhaleLabel: 'Breathe Out', holdOutLabel: '' },
+  'coherent':{ inhale: 5, holdIn: 0, exhale: 5, holdOut: 0, inhaleLabel: 'Breathe In', holdInLabel: '', exhaleLabel: 'Breathe Out', holdOutLabel: '' }
+};
+
+let currentMode = '478';
+let breathing = false;
+let phase = '';
+let phaseTimer = 0;
+let totalSeconds = 0;
+let cycleCount = 0;
+let intervalId = null;
+let animFrameId = null;
+
+const circle = document.getElementById('breathingCircle');
+const ring = document.getElementById('circleRing');
+const text = document.getElementById('breathingText');
+const statusEl = document.getElementById('statusText');
+const timerEl = document.getElementById('timer');
+const cyclesEl = document.getElementById('cyclesDisplay');
+const startBtn = document.getElementById('startBtn');
+const resetBtn = document.getElementById('resetBtn');
+const bgGlow = document.getElementById('bgGlow');
+const totalTimeEl = document.getElementById('totalTime');
+const cycleCountEl = document.getElementById('cycleCount');
+
+// Mode selector
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (breathing) return;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentMode = btn.dataset.mode;
+  });
+});
+
+// Particles
+const container = document.getElementById('circleContainer');
+function spawnParticle() {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  const size = 3 + Math.random() * 5;
+  p.style.width = size + 'px';
+  p.style.height = size + 'px';
+  const angle = Math.random() * Math.PI * 2;
+  const dist = 100 + Math.random() * 40;
+  const cx = 130 + Math.cos(angle) * dist;
+  const cy = 130 + Math.sin(angle) * dist;
+  p.style.left = cx + 'px';
+  p.style.top = cy + 'px';
+  p.style.background = `rgba(${100 + Math.random()*80}, ${140 + Math.random()*80}, 255, ${0.3 + Math.random()*0.4})`;
+  container.appendChild(p);
+  const targetScale = 1 + Math.random() * 1.5;
+  p.animate([
+    { opacity: 0, transform: 'scale(0.5) translate(0,0)' },
+    { opacity: 0.8, transform: `scale(${targetScale}) translate(${Math.random()*20-10}px, ${Math.random()*20-10}px)`, offset: 0.5 },
+    { opacity: 0, transform: `scale(${targetScale * 0.5}) translate(${Math.random()*30-15}px, ${Math.random()*30-15}px)` }
+  ], { duration: 2000 + Math.random() * 1500, easing: 'ease-out' }).onfinish = () => p.remove();
+}
+setInterval(spawnParticle, 300);
+
+function getScaleForPhase(ph, phaseName, mode) {
+  const m = modes[currentMode];
+  if (phaseName === 'inhale') return 1 + (ph / m.inhale) * 2.2;
+  if (phaseName === 'holdIn') return 3.2;
+  if (phaseName === 'exhale') return 3.2 - (ph / m.exhale) * 2.2;
+  if (phaseName === 'holdOut') return 1;
+  return 1;
+}
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return m + ':' + (sec < 10 ? '0' : '') + sec;
+}
+
+function startBreathing() {
+  if (breathing) {
+    stopBreathing();
+    return;
+  }
+  breathing = true;
+  startBtn.textContent = 'Stop';
+  startBtn.style.background = 'rgba(255,100,100,0.2)';
+  startBtn.style.borderColor = 'rgba(255,100,100,0.4)';
+  startBtn.style.color = '#ff9090';
+
+  const m = modes[currentMode];
+  let currentPhase = 'inhale';
+  let phaseTime = 0;
+  let lastTick = Date.now();
+  phaseTimer = 0;
+
+  function tick() {
+    const now = Date.now();
+    const dt = (now - lastTick) / 1000;
+    lastTick = now;
+    phaseTime += dt;
+    totalSeconds += dt;
+
+    timerEl.textContent = formatTime(Math.floor(totalSeconds));
+    totalTimeEl.textContent = formatTime(Math.floor(totalSeconds));
+
+    const m2 = modes[currentMode];
+    const maxTime = currentPhase === 'inhale' ? m2.inhale :
+                    currentPhase === 'holdIn' ? m2.holdIn :
+                    currentPhase === 'exhale' ? m2.exhale : m2.holdOut;
+
+    const progress = Math.min(phaseTime / maxTime, 1);
+
+    // Scale circle
+    let scale;
+    if (currentPhase === 'inhale') scale = 1 + (progress) * 2.2;
+    else if (currentPhase === 'holdIn') scale = 3.2;
+    else if (currentPhase === 'exhale') scale = 3.2 - (progress) * 2.2;
+    else scale = 1;
+
+    circle.style.transform = `scale(${Math.max(0.85, Math.min(3.5, scale))})`;
+
+    // Color shift
+    const hue = 210 + Math.sin(progress * Math.PI) * 40;
+    const lightness = 50 + Math.sin(progress * Math.PI) * 15;
+    circle.style.background = `radial-gradient(circle, hsla(${hue}, 70%, ${lightness}%, 0.7) 0%, hsla(${hue}, 50%, 30%, 0.2) 100%)`;
+    bgGlow.style.background = `radial-gradient(circle, hsla(${hue}, 60%, 30%, 0.12) 0%, transparent 70%)`;
+
+    // Text
+    let label;
+    if (currentPhase === 'inhale') label = m2.inhaleLabel;
+    else if (currentPhase === 'holdIn') label = m2.holdInLabel || m2.inhaleLabel;
+    else if (currentPhase === 'exhale') label = m2.exhaleLabel;
+    else label = m2.holdOutLabel || m2.exhaleLabel;
+    text.textContent = label;
+
+    // Status text
+    const elapsed = Math.floor(phaseTime);
+    const remaining = Math.max(0, Math.ceil(maxTime - phaseTime));
+    statusEl.textContent = remaining > 0 ? `Phase: ${Math.ceil(maxTime - phaseTime)}s remaining` : '';
+
+    // Check phase transition
+    if (phaseTime >= maxTime) {
+      phaseTime = 0;
+      if (currentPhase === 'inhale') currentPhase = m2.holdIn > 0 ? 'holdIn' : 'exhale';
+      else if (currentPhase === 'holdIn') currentPhase = 'exhale';
+      else if (currentPhase === 'exhale') currentPhase = m2.holdOut > 0 ? 'holdOut' : 'inhale';
+      else currentPhase = 'inhale';
+
+      if (currentPhase === 'inhale' && cycleCount > 0) {}
+      if (currentPhase === 'inhale') {
+        cycleCount++;
+        cyclesEl.textContent = `Cycles: ${cycleCount}`;
+        cycleCountEl.textContent = cycleCount;
+      }
+    }
+
+    if (breathing) animFrameId = requestAnimationFrame(tick);
+  }
+  animFrameId = requestAnimationFrame(tick);
+}
+
+function stopBreathing() {
+  breathing = false;
+  if (animFrameId) cancelAnimationFrame(animFrameId);
+  startBtn.textContent = 'Start';
+  startBtn.style.background = '';
+  startBtn.style.borderColor = '';
+  startBtn.style.color = '';
+  text.textContent = 'Paused';
+  statusEl.textContent = '';
+  circle.style.transform = 'scale(1)';
+}
+
+function resetAll() {
+  stopBreathing();
+  totalSeconds = 0;
+  cycleCount = 0;
+  timerEl.textContent = '00:00';
+  totalTimeEl.textContent = '0:00';
+  cyclesEl.textContent = 'Cycles: 0';
+  cycleCountEl.textContent = '0';
+  circle.style.transform = 'scale(1)';
+  circle.style.background = '';
+  text.textContent = 'Ready';
+  bgGlow.style.background = '';
+}
+
+startBtn.addEventListener('click', startBreathing);
+resetBtn.addEventListener('click', resetAll);
+
+// Touch support: tap the circle to start/stop
+container.addEventListener('touchstart', (e) => { e.preventDefault(); startBreathing(); });
+container.addEventListener('click', () => { if (!breathing) startBreathing(); else stopBreathing(); });
+</script>
+</body>
+</html>
