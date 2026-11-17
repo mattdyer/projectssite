@@ -56,7 +56,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [x] **Rock Paper Scissors** — Play vs computer, animated, track score.
 - [x] **Mad Libs Generator** — Prompt for words, assemble a silly story.
 - [x] **Joke of the Day** — Fetch a random joke from an API and display it.
-- [ ] **Pomodoro Timer** — 25-min work / 5-min break cycle with visual progress.
+- [x] **Pomodoro Timer** — 25-min work / 5-min break cycle with visual progress.
 - [ ] **Breathing Exercise** — Animated circle expands/contracts for guided breathing.
 - [ ] **QR Code Generator** — Type text, render a QR code on canvas.
 - [ ] **Password Generator** — Adjustable length, character types, copy to clipboard.
