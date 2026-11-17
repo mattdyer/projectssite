@@ -66,7 +66,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 
 ## Science / Education
 
-- [ ] **Solar System Simulator** — Planets orbiting the sun, zoomable, clickable info.
+- [x] **Solar System Simulator** — Planets orbiting the sun, zoomable, clickable info.
 - [x] **Pendulum Simulator** — Adjustable length/mass, watch energy exchange.
 - [ ] **Periodic Table Explorer** — Click elements to see properties.
 - [ ] **Weather Map** — Plot current weather data on a simple map.
