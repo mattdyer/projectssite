@@ -3,76 +3,153 @@
 <head>
 	<title>Mattdyer.us Projects</title>
 	<script data-ad-client="ca-pub-2015207451088384" async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<style>
+		* { box-sizing: border-box; margin: 0; padding: 0; }
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+			background: #0f0f1a;
+			color: #e0e0e0;
+			line-height: 1.6;
+			padding: 2rem 1rem;
+		}
+		.container {
+			max-width: 1100px;
+			margin: 0 auto;
+		}
+		h1 {
+			text-align: center;
+			font-size: 1.8rem;
+			margin-bottom: 0.5rem;
+			color: #ffffff;
+		}
+		.subtitle {
+			text-align: center;
+			font-size: 1rem;
+			color: #888;
+			margin-bottom: 2.5rem;
+		}
+		.section-title {
+			font-size: 1.2rem;
+			font-weight: 600;
+			margin-bottom: 1rem;
+			padding-bottom: 0.5rem;
+			border-bottom: 2px solid #333;
+		}
+		.section-title.before { color: #a0a0a0; }
+		.section-title.after { color: #7ecfff; }
+		.section { margin-bottom: 3rem; }
+		.grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+			gap: 0.75rem;
+		}
+		.card {
+			background: #1a1a2e;
+			border: 1px solid #2a2a3e;
+			border-radius: 10px;
+			padding: 0.9rem 1rem;
+			transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+			text-decoration: none;
+			display: block;
+		}
+		.card:hover {
+			transform: translateY(-3px);
+			box-shadow: 0 6px 20px rgba(126, 207, 255, 0.15);
+			border-color: #7ecfff;
+		}
+		.card span {
+			color: #c0c0d0;
+			font-size: 0.95rem;
+		}
+		.card:hover span {
+			color: #ffffff;
+		}
+		/* Mobile tweaks */
+		@media (max-width: 480px) {
+			body { padding: 1rem 0.5rem; }
+			.grid { grid-template-columns: 1fr; gap: 0.5rem; }
+			.card { padding: 0.8rem 0.9rem; }
+			.section { margin-bottom: 2rem; }
+		}
+	</style>
 </head>
 <body>
-	<p>Various projects from the past and from my current blog</p>
+	<div class="container">
+		<h1>Mattdyer.us Projects</h1>
+		<p class="subtitle">Various projects from the past and from my current blog</p>
 
-	<ul>
-		<li>Before AI</li>
-		<li><a href="/randompic/index.htm">Random Pics</a></li>
-		<li><a href="/clicklearning/index.html">Click Learning</a></li>
-		<li><a href="/clicklearning/index2.html">Click Learning 2</a></li>
-		<li><a href="/noisepicture/index.html">Noise Picture</a></li>
-		<li><a href="/fish/index.html">Fish Game</a></li>
-		<li><a href="/life/index.html">Life Game</a></li>
-		<li><a href="/canvaspaint/index.html">Canvas Paint</a></li>
-	</ul>
-	<ul>
-		<li>After AI</li>
-		<li><a href="/snake/index.html">Snake Game</a></li>
-		<li><a href="/breakout/index.html">Breakout</a></li>
-		<li><a href="/2048/index.html">2048</a></li>
-		<li><a href="/space-invaders/index.html">Space Invaders</a></li>
-		<li><a href="/minesweeper/index.html">Minesweeper</a></li>
-		<li><a href="/pong/index.html">Pong</a></li>
-		<li><a href="/tetris/index.html">Tetris</a></li>
-		<li><a href="/flappy-bird/index.html">Flappy Bird</a></li>
-		<li><a href="/memory-match/index.html">Memory Match</a></li>
-		<li><a href="/reaction-time/index.html">Reaction Time</a></li>
-		<li><a href="/whack-a-mole/index.html">Whack-a-Mole</a></li>
-		<li><a href="/conway-life/index.html">Conway's Game of Life</a></li>
-		<li><a href="/doodle-jump/index.html">Doodle Jump</a></li>
-		<li><a href="/simon-says/index.html">Simon Says</a></li>
-		<li><a href="/rock-paper-scissors/index.html">Rock Paper Scissors</a></li>
-		<li><a href="/tic-tac-toe/index.html">Tic-Tac-Toe</a></li>
-		<li><a href="/connect-four/index.html">Connect Four</a></li>
-		<li><a href="/hangman/index.html">Hangman</a></li>
-		<li><a href="/word-scramble/index.html">Word Scramble</a></li>
-		<li><a href="/battleship/index.html">Battleship</a></li>
-		<li><a href="/gravity-soccer/index.html">Gravity Soccer</a></li>
-		<li><a href="/particle-physics-toy/index.html">Particle Physics Toy</a></li>
-		<li><a href="/spirograph/index.html">Spirograph</a></li>
-		<li><a href="/typing-speed-test/index.html">Typing Speed Test</a></li>
-		<li><a href="/chaos-game/index.html">Chaos Game</a></li>
-		<li><a href="/dice-roller/index.html">Dice Roller</a></li>
-		<li><a href="/maze-generator/index.html">Maze Generator</a></li>
-		<li><a href="/pixel-art-editor/index.html">Pixel Art Editor</a></li>
-		<li><a href="/mandala-generator/index.html">Mandala Generator</a></li>
-		<li><a href="/kaleidoscope/index.html">Kaleidoscope</a></li>
-		<li><a href="/fractal-explorer/index.html">Fractal Explorer</a></li>
-		<li><a href="/flow-fields/index.html">Flow Fields</a></li>
-		<li><a href="/waveform-synth/index.html">Waveform Synth</a></li>
-		<li><a href="/qr-code-generator/index.html">QR Code Generator</a></li>
-		<li><a href="/color-mixer/index.html">Color Mixer</a></li>
-		<li><a href="/rotoscope/index.html">Rotoscope</a></li>
-		<li><a href="/music-visualizer/index.html">Music Visualizer</a></li>
-		<li><a href="/pendulum-simulator/index.html">Pendulum Simulator</a></li>
-		<li><a href="/projectile-motion/index.html">Projectile Motion</a></li>
-		<li><a href="/gravity-drawing/index.html">Gravity Drawing</a></li>
-		<li><a href="/digital-clock/index.html">Digital Clock</a></li>
-		<li><a href="/stopwatch-timer/index.html">Stopwatch / Timer</a></li>
-		<li><a href="/coin-flip/index.html">Coin Flip</a></li>
-		<li><a href="/number-guessing-game/index.html">Number Guessing Game</a></li>
-		<li><a href="/random-name-picker/index.html">Random Name Picker</a></li>
-		<li><a href="/color-palette-generator/index.html">Color Palette Generator</a></li>
-		<li><a href="/mad-libs-generator/index.html">Mad Libs Generator</a></li>
-		<li><a href="/joke-of-the-day/index.html">Joke of the Day</a></li>
-		<li><a href="/pomodoro-timer/index.html">Pomodoro Timer</a></li>
-		<li><a href="/solar-system-simulator/index.html">Solar System Simulator</a></li>
-		<li><a href="/breathing-exercise/index.html">Breathing Exercise</a></li>
-		<li><a href="/password-generator/index.html">Password Generator</a></li>
-		<li><a href="/unit-converter/index.html">Unit Converter</a></li>
-	</ul>
+		<div class="section">
+			<h2 class="section-title before">Before AI</h2>
+			<div class="grid">
+				<a href="/randompic/index.htm" class="card"><span>Random Pics</span></a>
+				<a href="/clicklearning/index.html" class="card"><span>Click Learning</span></a>
+				<a href="/clicklearning/index2.html" class="card"><span>Click Learning 2</span></a>
+				<a href="/noisepicture/index.html" class="card"><span>Noise Picture</span></a>
+				<a href="/fish/index.html" class="card"><span>Fish Game</span></a>
+				<a href="/life/index.html" class="card"><span>Life Game</span></a>
+				<a href="/canvaspaint/index.html" class="card"><span>Canvas Paint</span></a>
+			</div>
+		</div>
 
+		<div class="section">
+			<h2 class="section-title after">After AI</h2>
+			<div class="grid">
+				<a href="/snake/index.html" class="card"><span>Snake Game</span></a>
+				<a href="/breakout/index.html" class="card"><span>Breakout</span></a>
+				<a href="/2048/index.html" class="card"><span>2048</span></a>
+				<a href="/space-invaders/index.html" class="card"><span>Space Invaders</span></a>
+				<a href="/minesweeper/index.html" class="card"><span>Minesweeper</span></a>
+				<a href="/pong/index.html" class="card"><span>Pong</span></a>
+				<a href="/tetris/index.html" class="card"><span>Tetris</span></a>
+				<a href="/flappy-bird/index.html" class="card"><span>Flappy Bird</span></a>
+				<a href="/memory-match/index.html" class="card"><span>Memory Match</span></a>
+				<a href="/reaction-time/index.html" class="card"><span>Reaction Time</span></a>
+				<a href="/whack-a-mole/index.html" class="card"><span>Whack-a-Mole</span></a>
+				<a href="/conway-life/index.html" class="card"><span>Conway's Game of Life</span></a>
+				<a href="/doodle-jump/index.html" class="card"><span>Doodle Jump</span></a>
+				<a href="/simon-says/index.html" class="card"><span>Simon Says</span></a>
+				<a href="/rock-paper-scissors/index.html" class="card"><span>Rock Paper Scissors</span></a>
+				<a href="/tic-tac-toe/index.html" class="card"><span>Tic-Tac-Toe</span></a>
+				<a href="/connect-four/index.html" class="card"><span>Connect Four</span></a>
+				<a href="/hangman/index.html" class="card"><span>Hangman</span></a>
+				<a href="/word-scramble/index.html" class="card"><span>Word Scramble</span></a>
+				<a href="/battleship/index.html" class="card"><span>Battleship</span></a>
+				<a href="/gravity-soccer/index.html" class="card"><span>Gravity Soccer</span></a>
+				<a href="/particle-physics-toy/index.html" class="card"><span>Particle Physics Toy</span></a>
+				<a href="/spirograph/index.html" class="card"><span>Spirograph</span></a>
+				<a href="/typing-speed-test/index.html" class="card"><span>Typing Speed Test</span></a>
+				<a href="/chaos-game/index.html" class="card"><span>Chaos Game</span></a>
+				<a href="/dice-roller/index.html" class="card"><span>Dice Roller</span></a>
+				<a href="/maze-generator/index.html" class="card"><span>Maze Generator</span></a>
+				<a href="/pixel-art-editor/index.html" class="card"><span>Pixel Art Editor</span></a>
+				<a href="/mandala-generator/index.html" class="card"><span>Mandala Generator</span></a>
+				<a href="/kaleidoscope/index.html" class="card"><span>Kaleidoscope</span></a>
+				<a href="/fractal-explorer/index.html" class="card"><span>Fractal Explorer</span></a>
+				<a href="/flow-fields/index.html" class="card"><span>Flow Fields</span></a>
+				<a href="/waveform-synth/index.html" class="card"><span>Waveform Synth</span></a>
+				<a href="/qr-code-generator/index.html" class="card"><span>QR Code Generator</span></a>
+				<a href="/color-mixer/index.html" class="card"><span>Color Mixer</span></a>
+				<a href="/rotoscope/index.html" class="card"><span>Rotoscope</span></a>
+				<a href="/music-visualizer/index.html" class="card"><span>Music Visualizer</span></a>
+				<a href="/pendulum-simulator/index.html" class="card"><span>Pendulum Simulator</span></a>
+				<a href="/projectile-motion/index.html" class="card"><span>Projectile Motion</span></a>
+				<a href="/gravity-drawing/index.html" class="card"><span>Gravity Drawing</span></a>
+				<a href="/digital-clock/index.html" class="card"><span>Digital Clock</span></a>
+				<a href="/stopwatch-timer/index.html" class="card"><span>Stopwatch / Timer</span></a>
+				<a href="/coin-flip/index.html" class="card"><span>Coin Flip</span></a>
+				<a href="/number-guessing-game/index.html" class="card"><span>Number Guessing Game</span></a>
+				<a href="/random-name-picker/index.html" class="card"><span>Random Name Picker</span></a>
+				<a href="/color-palette-generator/index.html" class="card"><span>Color Palette Generator</span></a>
+				<a href="/mad-libs-generator/index.html" class="card"><span>Mad Libs Generator</span></a>
+				<a href="/joke-of-the-day/index.html" class="card"><span>Joke of the Day</span></a>
+				<a href="/pomodoro-timer/index.html" class="card"><span>Pomodoro Timer</span></a>
+				<a href="/solar-system-simulator/index.html" class="card"><span>Solar System Simulator</span></a>
+				<a href="/breathing-exercise/index.html" class="card"><span>Breathing Exercise</span></a>
+				<a href="/password-generator/index.html" class="card"><span>Password Generator</span></a>
+				<a href="/unit-converter/index.html" class="card"><span>Unit Converter</span></a>
+			</div>
+		</div>
+	</div>
 </body>
 </html>
