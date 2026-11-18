@@ -59,7 +59,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [x] **Pomodoro Timer** — 25-min work / 5-min break cycle with visual progress.
 - [x] **Breathing Exercise** — Animated circle expands/contracts for guided breathing.
 - [ ] **QR Code Generator** — Type text, render a QR code on canvas.
-- [ ] **Password Generator** — Adjustable length, character types, copy to clipboard.
+- [x] **Password Generator** — Adjustable length, character types, copy to clipboard.
 - [ ] **Unit Converter** — Length, weight, temperature, currency conversions.
 - [ ] **Age Calculator** — Input birthdate, display age in years/months/days/seconds.
 - [ ] **Countdown to Event** — Enter a date, see a live countdown.

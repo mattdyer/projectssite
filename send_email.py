@@ -2,15 +2,15 @@ import smtplib
 from email.mime.text import MIMEText
 
 msg = MIMEText(
-    "Project: Number Guessing Game\n"
-    "Folder: docs/number-guessing-game/\n"
-    "Progress: 43/61 projects completed (18 remaining)\n"
+    "Project: Breathing Exercise\n"
+    "Folder: docs/breathing-exercise/\n"
+    "Progress: 50/61 projects completed (11 remaining)\n"
     "\n"
-    "Interactive number guessing game with 3 difficulty levels, attempt tracking, localStorage best scores, color-coded guess history, and confetti celebration.",
+    "Animated guided breathing app with 4 techniques (4-7-8, Box, Calm, Coherent), expanding/contracting circle animation, particle effects, and mobile touch support.",
     'plain', 'utf-8'
 )
 
-msg['Subject'] = '[Project Builder] Number Guessing Game complete!'
+msg['Subject'] = '[Project Builder] Breathing Exercise complete!'
 msg['From'] = 'agent@md.mattdyer.us'
 msg['To'] = 'madmatt1220@gmail.com'
 
