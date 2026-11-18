@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unit Converter</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  color: #e0e0e0;
+}
+.container {
+  background: rgba(255,255,255,0.07);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+h1 {
+  text-align: center;
+  margin-bottom: 0.25rem;
+  font-size: 1.8rem;
+  background: linear-gradient(90deg, #00d2ff, #7b2ff7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.subtitle {
+  text-align: center;
+  color: #888;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+.category-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1.5rem;
+  justify-content: center;
+}
+.cat-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.05);
+  color: #ccc;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+.cat-btn:hover { background: rgba(255,255,255,0.12); }
+.cat-btn.active {
+  background: linear-gradient(135deg, #00d2ff, #7b2ff7);
+  color: #fff;
+  border-color: transparent;
+  font-weight: 600;
+}
+.converter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.converter-row select,
+.converter-row input {
+  flex: 1;
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  font-size: 1rem;
+  outline: none;
+  transition: border 0.2s;
+}
+.converter-row select:focus,
+.converter-row input:focus {
+  border-color: #00d2ff;
+}
+.converter-row select option { background: #302b63; color: #fff; }
+.converter-row input::placeholder { color: #666; }
+.swap-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.08);
+  color: #ccc;
+  cursor: pointer;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.swap-btn:hover {
+  background: linear-gradient(135deg, #00d2ff, #7b2ff7);
+  color: #fff;
+  border-color: transparent;
+}
+.result-box {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: rgba(0, 210, 255, 0.08);
+  border: 1px solid rgba(0, 210, 255, 0.2);
+  text-align: center;
+  font-size: 1.1rem;
+  min-height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  word-break: break-word;
+}
+.result-box .formula {
+  font-size: 0.8rem;
+  color: #888;
+  margin-top: 0.3rem;
+}
+.formula {
+  font-size: 0.8rem;
+  color: #888;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+.copy-btn {
+  display: block;
+  margin: 0.75rem auto 0;
+  padding: 0.5rem 1.5rem;
+  border-radius: 10px;
+  border: 1px solid rgba(0,210,255,0.3);
+  background: rgba(0,210,255,0.1);
+  color: #00d2ff;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+.copy-btn:hover {
+  background: rgba(0,210,255,0.25);
+}
+@media (max-width: 400px) {
+  .container { padding: 1.25rem; }
+  h1 { font-size: 1.4rem; }
+  .converter-row { flex-wrap: wrap; justify-content: center; }
+  .converter-row select, .converter-row input { min-width: 0; flex: 1 1 120px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>⚖️ Unit Converter</h1>
+  <p class="subtitle">Fast conversions across common units</p>
+
+  <div class="category-tabs" id="catTabs">
+    <button class="cat-btn active" data-cat="length">📏 Length</button>
+    <button class="cat-btn" data-cat="weight">⚖️ Weight</button>
+    <button class="cat-btn" data-cat="temperature">🌡️ Temp</button>
+    <button class="cat-btn" data-cat="volume">🧊 Volume</button>
+    <button class="cat-btn" data-cat="area">📐 Area</button>
+    <button class="cat-btn" data-cat="time">⏱️ Time</button>
+  </div>
+
+  <div class="converter-row">
+    <input type="number" id="inputVal" placeholder="Enter value" step="any">
+    <select id="fromUnit"></select>
+  </div>
+
+  <div style="text-align:center; margin: 0.5rem 0;">
+    <button class="swap-btn" id="swapBtn" title="Swap units">⇄</button>
+  </div>
+
+  <div class="converter-row">
+    <select id="toUnit"></select>
+  </div>
+
+  <div class="result-box" id="resultBox">
+    <span id="resultText">Enter a value to convert</span>
+  </div>
+  <p class="formula" id="formulaText"></p>
+
+  <button class="copy-btn" id="copyBtn" style="display:none;">📋 Copy Result</button>
+</div>
+
+<script>
+const units = {
+  length: {
+    meters: 1,
+    kilometers: 1000,
+    centimeters: 0.01,
+    millimeters: 0.001,
+    miles: 1609.344,
+    yards: 0.9144,
+    feet: 0.3048,
+    inches: 0.0254,
+    nautical_miles: 1852
+  },
+  weight: {
+    kilograms: 1,
+    grams: 0.001,
+    milligrams: 0.000001,
+    pounds: 0.453592,
+    ounces: 0.0283495,
+    tons: 907.185,
+    stones: 6.35029
+  },
+  temperature: {
+    celsius: 'C',
+    fahrenheit: 'F',
+    kelvin: 'K'
+  },
+  volume: {
+    liters: 1,
+    milliliters: 0.001,
+    gallons_us: 3.78541,
+    quarts_us: 0.946353,
+    pints_us: 0.473176,
+    cups_us: 0.236588,
+    fluid_oz_us: 0.0295735,
+    cubic_meters: 1000,
+    cubic_feet: 28.3168
+  },
+  area: {
+    square_meters: 1,
+    square_kilometers: 1e6,
+    square_feet: 0.092903,
+    square_yards: 0.836127,
+    acres: 4046.86,
+    hectares: 1e4,
+    square_miles: 2.59e6
+  },
+  time: {
+    seconds: 1,
+    minutes: 60,
+    hours: 3600,
+    days: 86400,
+    weeks: 604800,
+    months: 2629800,
+    years: 31557600
+  }
+};
+
+const unitLabels = {
+  length: {
+    meters:'Meters', kilometers:'Kilometers', centimeters:'Centimeters',
+    millimeters:'Millimeters', miles:'Miles', yards:'Yards',
+    feet:'Feet', inches:'Inches', nautical_miles:'Nautical Miles'
+  },
+  weight: {
+    kilograms:'Kilograms', grams:'Grams', milligrams:'Milligrams',
+    pounds:'Pounds', ounces:'Ounces', tons:'US Tons', stones:'Stones'
+  },
+  temperature: {
+    celsius:'Celsius (°C)', fahrenheit:'Fahrenheit (°F)', kelvin:'Kelvin (K)'
+  },
+  volume: {
+    liters:'Liters', milliliters:'Milliliters', gallons_us:'US Gallons',
+    quarts_us:'US Quarts', pints_us:'US Pints', cups_us:'US Cups',
+    fluid_oz_us:'US Fluid Oz', cubic_meters:'Cubic Meters', cubic_feet:'Cubic Feet'
+  },
+  area: {
+    square_meters:'Square Meters', square_kilometers:'Square Kilometers',
+    square_feet:'Square Feet', square_yards:'Square Yards',
+    acres:'Acres', hectares:'Hectares', square_miles:'Square Miles'
+  },
+  time: {
+    seconds:'Seconds', minutes:'Minutes', hours:'Hours',
+    days:'Days', weeks:'Weeks', months:'Months', years:'Years'
+  }
+};
+
+let currentCat = 'length';
+
+function populateUnits(cat) {
+  const fromSel = document.getElementById('fromUnit');
+  const toSel = document.getElementById('toUnit');
+  const keys = Object.keys(units[cat]);
+  fromSel.innerHTML = '';
+  toSel.innerHTML = '';
+  keys.forEach((k, i) => {
+    fromSel.add(new Option(unitLabels[cat][k], k));
+    toSel.add(new Option(unitLabels[cat][k], k));
+  });
+  if (keys.length > 1) toSel.selectedIndex = 1;
+}
+
+function convertTemp(val, from, to) {
+  if (from === to) return val;
+  let c;
+  if (from === 'celsius') c = val;
+  else if (from === 'fahrenheit') c = (val - 32) * 5/9;
+  else c = val - 273.15;
+  if (to === 'celsius') return c;
+  if (to === 'fahrenheit') return c * 9/5 + 32;
+  return c + 273.15;
+}
+
+function formatNum(n) {
+  if (Number.isInteger(n)) return n.toLocaleString();
+  if (Math.abs(n) < 0.000001 && n !== 0) return n.toExponential(6);
+  if (Math.abs(n) >= 1e9) return n.toExponential(4);
+  return parseFloat(n.toPrecision(10)).toString();
+}
+
+function convert() {
+  const val = parseFloat(document.getElementById('inputVal').value);
+  const from = document.getElementById('fromUnit').value;
+  const to = document.getElementById('toUnit').value;
+  const resultText = document.getElementById('resultText');
+  const formulaText = document.getElementById('formulaText');
+  const copyBtn = document.getElementById('copyBtn');
+
+  if (isNaN(val)) {
+    resultText.textContent = 'Enter a value to convert';
+    formulaText.textContent = '';
+    copyBtn.style.display = 'none';
+    return;
+  }
+
+  let result;
+  if (currentCat === 'temperature') {
+    result = convertTemp(val, from, to);
+  } else {
+    const fromFactor = units[currentCat][from];
+    const toFactor = units[currentCat][to];
+    result = val * fromFactor / toFactor;
+  }
+
+  const formatted = formatNum(result);
+  const fromLabel = unitLabels[currentCat][from];
+  const toLabel = unitLabels[currentCat][to];
+
+  resultText.innerHTML = `<strong>${formatNum(val)}</strong> ${fromLabel} = <strong>${formatted}</strong> ${toLabel}`;
+
+  if (currentCat === 'temperature') {
+    const sym = {celsius:'°C', fahrenheit:'°F', kelvin:'K'};
+    formulaText.textContent = `${from === 'celsius' ? val : from === 'fahrenheit' ? val : val-273.15}${sym[from]} → ${formatNum(currentCat === 'temperature' ? 
+      (to === 'celsius' ? result : to === 'fahrenheit' ? result : result) : result)}${sym[to]}`;
+  } else {
+    const ratio = units[currentCat][from] / units[currentCat][to];
+    formulaText.textContent = `1 ${unitLabels[currentCat][from]} = ${formatNum(ratio)} ${unitLabels[currentCat][to]}`;
+  }
+
+  copyBtn.style.display = 'block';
+  copyBtn.dataset.result = `${formatNum(val)} ${fromLabel} = ${formatted} ${toLabel}`;
+}
+
+document.getElementById('inputVal').addEventListener('input', convert);
+
+document.getElementById('swapBtn').addEventListener('click', () => {
+  const fromSel = document.getElementById('fromUnit');
+  const toSel = document.getElementById('toUnit');
+  const tmp = fromSel.value;
+  fromSel.value = toSel.value;
+  toSel.value = tmp;
+  convert();
+});
+
+document.getElementById('copyBtn').addEventListener('click', () => {
+  navigator.clipboard.writeText(document.getElementById('copyBtn').dataset.result).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => btn.textContent = '📋 Copy Result', 1500);
+  });
+});
+
+document.getElementById('catTabs').addEventListener('click', (e) => {
+  if (!e.target.classList.contains('cat-btn')) return;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  currentCat = e.target.dataset.cat;
+  populateUnits(currentCat);
+  document.getElementById('inputVal').value = '';
+  document.getElementById('resultText').textContent = 'Enter a value to convert';
+  document.getElementById('formulaText').textContent = '';
+  document.getElementById('copyBtn').style.display = 'none';
+});
+
+populateUnits('length');
+</script>
+</body>
+</html>
