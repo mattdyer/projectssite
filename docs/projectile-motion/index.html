@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Projectile Motion Simulator</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0f1729;
+    color: #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  h1 {
+    font-size: 1.6rem;
+    margin: 12px 0 4px;
+    background: linear-gradient(90deg, #f59e0b, #ef4444);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle { font-size: 0.85rem; color: #94a3b8; margin-bottom: 10px; }
+  #canvas-wrap {
+    position: relative;
+    border: 2px solid #334155;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #1e293b;
+    max-width: 100%;
+  }
+  canvas { display: block; }
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 16px;
+    padding: 12px 16px;
+    max-width: 520px;
+    width: 95%;
+  }
+  .ctrl-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .ctrl-group label {
+    font-size: 0.8rem;
+    color: #94a3b8;
+  }
+  .ctrl-group input[type=range] {
+    accent-color: #f59e0b;
+    width: 100%;
+  }
+  .ctrl-group .val {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #f59e0b;
+    text-align: right;
+  }
+  .buttons {
+    display: flex;
+    gap: 8px;
+    margin: 8px 0;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  button {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  button:active { transform: scale(0.96); }
+  #btn-fire { background: linear-gradient(135deg, #ef4444, #f59e0b); color: #fff; }
+  #btn-reset { background: #334155; color: #e2e8f0; }
+  #btn-trail { background: #1e40af; color: #fff; }
+  #info-panel {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    max-width: 520px;
+    width: 95%;
+    padding: 0 16px 16px;
+  }
+  .info-box {
+    background: #1e293b;
+    border-radius: 8px;
+    padding: 8px 10px;
+    text-align: center;
+  }
+  .info-box .lbl { font-size: 0.7rem; color: #64748b; text-transform: uppercase; }
+  .info-box .num { font-size: 1.1rem; font-weight: 700; color: #f59e0b; }
+  .targets-toggle {
+    display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: #94a3b8; margin: 4px 0;
+  }
+  .targets-toggle input { accent-color: #22c55e; }
+</style>
+</head>
+<body>
+
+<h1>Projectile Motion</h1>
+<p class="subtitle">Adjust angle &amp; speed — then fire!</p>
+
+<div id="canvas-wrap">
+  <canvas id="c" width="640" height="400"></canvas>
+</div>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <label>Launch Angle</label>
+    <input type="range" id="angle" min="5" max="85" value="45">
+    <div class="val" id="angle-val">45°</div>
+  </div>
+  <div class="ctrl-group">
+    <label>Initial Speed</label>
+    <input type="range" id="speed" min="5" max="50" value="25">
+    <div class="val" id="speed-val">25 m/s</div>
+  </div>
+  <div class="ctrl-group">
+    <label>Gravity</label>
+    <input type="range" id="gravity" min="1" max="20" value="9.8" step="0.1">
+    <div class="val" id="gravity-val">9.8 m/s²</div>
+  </div>
+  <div class="ctrl-group">
+    <label>Launch Height</label>
+    <input type="range" id="height" min="0" max="100" value="0">
+    <div class="val" id="height-val">0 m</div>
+  </div>
+</div>
+
+<div class="targets-toggle">
+  <input type="checkbox" id="show-targets"> <label for="show-targets">Show targets (hit to score!)</label>
+</div>
+
+<div class="buttons">
+  <button id="btn-fire">🔥 Fire</button>
+  <button id="btn-reset">Reset</button>
+  <button id="btn-trail">Trail: Off</button>
+</div>
+
+<div id="info-panel">
+  <div class="info-box"><div class="lbl">Distance</div><div class="num" id="dist">0.0 m</div></div>
+  <div class="info-box"><div class="lbl">Max Height</div><div class="num" id="maxh">0.0 m</div></div>
+  <div class="info-box"><div class="lbl">Flight Time</div><div class="num" id="time">0.0 s</div></div>
+  <div class="info-box"><div class="lbl">Speed</div><div class="num" id="cur-speed">0.0 m/s</div></div>
+  <div class="info-box"><div class="lbl">Height</div><div class="num" id="cur-h">0.0 m</div></div>
+  <div class="info-box"><div class="lbl">Targets Hit</div><div class="num" id="hits">0</div></div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('canvas-wrap');
+
+// Responsive canvas
+function resizeCanvas() {
+  const maxW = Math.min(640, window.innerWidth - 24);
+  const ratio = 400 / 640;
+  canvas.style.width = maxW + 'px';
+  canvas.style.height = (maxW * ratio) + 'px';
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+const W = 640, H = 400;
+const GROUND_Y = H - 30;
+const SCALE = 8; // pixels per meter
+const ORIGIN_X = 50;
+const ORIGIN_Y = GROUND_Y;
+
+// State
+let projectile = null;
+let trail = [];
+let showTrail = false;
+let showTargets = false;
+let targets = [];
+let hits = 0;
+let animId = null;
+
+// Controls
+const elAngle = document.getElementById('angle');
+const elSpeed = document.getElementById('speed');
+const elGravity = document.getElementById('gravity');
+const elHeight = document.getElementById('height');
+const elAngleVal = document.getElementById('angle-val');
+const elSpeedVal = document.getElementById('speed-val');
+const elGravityVal = document.getElementById('gravity-val');
+const elHeightVal = document.getElementById('height-val');
+
+elAngle.oninput = () => elAngleVal.textContent = elAngle.value + '°';
+elSpeed.oninput = () => elSpeedVal.textContent = elSpeed.value + ' m/s';
+elGravity.oninput = () => elGravityVal.textContent = parseFloat(elGravity.value).toFixed(1) + ' m/s²';
+elHeight.oninput = () => elHeightVal.textContent = elHeight.value + ' m';
+
+document.getElementById('btn-fire').onclick = fire;
+document.getElementById('btn-reset').onclick = resetAll;
+document.getElementById('btn-trail').onclick = () => {
+  showTrail = !showTrail;
+  document.getElementById('btn-trail').textContent = showTrail ? 'Trail: On' : 'Trail: Off';
+  if (projectile) draw();
+};
+document.getElementById('show-targets').onchange = (e) => {
+  showTargets = e.target.checked;
+  if (showTargets && targets.length === 0) genTargets();
+  draw();
+};
+
+function genTargets() {
+  targets = [];
+  const count = 3 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < count; i++) {
+    const dist = 80 + Math.random() * (W - 150);
+    const y = GROUND_Y - 10 - Math.random() * 80;
+    targets.push({ x: dist, y: y, r: 14, hit: false });
+  }
+}
+
+function fire() {
+  if (animId) cancelAnimationFrame(animId);
+  const angleDeg = parseFloat(elAngle.value);
+  const v0 = parseFloat(elSpeed.value);
+  const g = parseFloat(elGravity.value);
+  const h0 = parseFloat(elHeight.value);
+  const angleRad = angleDeg * Math.PI / 180;
+
+  projectile = {
+    t: 0,
+    dt: 0.016,
+    v0, g, h0, angleRad,
+    startX: ORIGIN_X,
+    startY: ORIGIN_Y - h0 * SCALE
+  };
+  trail = [];
+  hits = 0;
+  if (showTargets) { hits = 0; targets.forEach(t => t.hit = false); }
+  document.getElementById('hits').textContent = '0';
+
+  function step() {
+    const p = projectile;
+    p.t += p.dt;
+    const vx = p.v0 * Math.cos(p.angleRad);
+    const vy = p.v0 * Math.sin(p.angleRad) - p.g * p.t;
+    const x = p.startX + vx * p.t * SCALE;
+    const y = p.startY + (p.v0 * Math.sin(p.angleRad) * p.t - 0.5 * p.g * p.t * p.t) * SCALE;
+
+    trail.push({ x, y });
+
+    p.cx = x;
+    p.cy = y;
+    p.vx = vx;
+    p.vy = vy;
+
+    // Target collision
+    if (showTargets) {
+      targets.forEach(t => {
+        if (!t.hit && Math.hypot(x - t.x, y - t.y) < t.r + 8) {
+          t.hit = true;
+          hits++;
+          document.getElementById('hits').textContent = hits;
+        }
+      });
+    }
+
+    draw();
+
+    if (y > GROUND_Y) {
+      // Land
+      // Extrapolate landing
+      const tFinal = (p.v0 * Math.sin(p.angleRad) + Math.sqrt(
+        (p.v0 * Math.sin(p.angleRad)) ** 2 + 2 * p.g * (h0)
+      )) / p.g;
+      const range = p.v0 * Math.cos(p.angleRad) * tFinal;
+      const maxHeight = p.h0 + (p.v0 * Math.sin(p.angleRad)) ** 2 / (2 * p.g);
+
+      document.getElementById('dist').textContent = range.toFixed(1) + ' m';
+      document.getElementById('maxh').textContent = maxHeight.toFixed(1) + ' m';
+      document.getElementById('time').textContent = tFinal.toFixed(1) + ' s';
+      animId = null;
+      return;
+    }
+    animId = requestAnimationFrame(step);
+  }
+  animId = requestAnimationFrame(step);
+}
+
+function resetAll() {
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+  projectile = null;
+  trail = [];
+  hits = 0;
+  if (showTargets) targets.forEach(t => t.hit = false);
+  document.getElementById('hits').textContent = '0';
+  document.getElementById('dist').textContent = '0.0 m';
+  document.getElementById('maxh').textContent = '0.0 m';
+  document.getElementById('time').textContent = '0.0 s';
+  document.getElementById('cur-speed').textContent = '0.0 m/s';
+  document.getElementById('cur-h').textContent = '0.0 m';
+  draw();
+}
+
+function draw() {
+  // Sky gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#0c1445');
+  grad.addColorStop(0.6, '#1a365d');
+  grad.addColorStop(1, '#1e3a5f');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Stars
+  ctx.fillStyle = '#ffffff22';
+  for (let i = 0; i < 40; i++) {
+    const sx = (i * 137.5) % W;
+    const sy = (i * 97.3) % (GROUND_Y * 0.6);
+    ctx.fillRect(sx, sy, 1.5, 1.5);
+  }
+
+  // Ground
+  const groundGrad = ctx.createLinearGradient(0, GROUND_Y, 0, H);
+  groundGrad.addColorStop(0, '#2d5a27');
+  groundGrad.addColorStop(1, '#1a3315');
+  ctx.fillStyle = groundGrad;
+  ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+
+  // Grid lines
+  ctx.strokeStyle = '#ffffff0a';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < W; i += SCALE * 10) {
+    ctx.beginPath(); ctx.moveTo(ORIGIN_X + i, 0); ctx.lineTo(ORIGIN_X + i, GROUND_Y); ctx.stroke();
+  }
+  for (let i = 0; i < GROUND_Y; i += SCALE * 10) {
+    ctx.beginPath(); ctx.moveTo(0, ORIGIN_Y - i); ctx.lineTo(W, ORIGIN_Y - i); ctx.stroke();
+  }
+
+  // Launcher
+  const angleDeg = parseFloat(elAngle.value);
+  const launcherLen = 30;
+  const launcherRad = angleDeg * Math.PI / 180;
+  const lx = ORIGIN_X;
+  const ly = ORIGIN_Y - parseFloat(elHeight.value) * SCALE;
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(lx, ly);
+  ctx.lineTo(lx + Math.cos(launcherRad) * launcherLen, ly - Math.sin(launcherRad) * launcherLen);
+  ctx.stroke();
+
+  // Cannon base
+  ctx.fillStyle = '#78716c';
+  ctx.beginPath();
+  ctx.arc(lx, ly, 10, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Trail
+  if (showTrail && trail.length > 1) {
+    ctx.strokeStyle = '#f59e0b55';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(trail[0].x, trail[0].y);
+    for (let i = 1; i < trail.length; i++) ctx.lineTo(trail[i].x, trail[i].y);
+    ctx.stroke();
+  }
+
+  // Targets
+  if (showTargets) {
+    targets.forEach(t => {
+      if (t.hit) {
+        ctx.fillStyle = '#22c55e44';
+        ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#22c55e';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('✓', t.x, t.y + 5);
+      } else {
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('?', t.x, t.y + 5);
+      }
+      // Target ring
+      ctx.strokeStyle = '#ef4444cc';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(t.x, t.y, t.r + 3, 0, Math.PI * 2); ctx.stroke();
+    });
+  }
+
+  // Projectile
+  if (projectile && projectile.cx !== undefined) {
+    const p = projectile;
+
+    // Glow
+    const glow = ctx.createRadialGradient(p.cx, p.cy, 0, p.cx, p.cy, 16);
+    glow.addColorStop(0, '#f59e0b88');
+    glow.addColorStop(1, '#f59e0b00');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(p.cx, p.cy, 16, 0, Math.PI * 2); ctx.fill();
+
+    // Ball
+    ctx.fillStyle = '#fbbf24';
+    ctx.beginPath(); ctx.arc(p.cx, p.cy, 6, 0, Math.PI * 2); ctx.fill();
+
+    // Real-time info
+    const speed = Math.hypot(p.vx, p.vy);
+    const curH = (p.startY - p.cy) / SCALE;
+    document.getElementById('cur-speed').textContent = speed.toFixed(1) + ' m/s';
+    document.getElementById('cur-h').textContent = Math.max(0, curH).toFixed(1) + ' m';
+  }
+
+  // Distance markers
+  ctx.fillStyle = '#64748b';
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  for (let m = 0; m < 70; m += 10) {
+    const px = ORIGIN_X + m * SCALE;
+    if (px < W - 10) {
+      ctx.fillText(m + 'm', px, GROUND_Y + 14);
+      ctx.strokeStyle = '#ffffff06';
+      ctx.beginPath(); ctx.moveTo(px, GROUND_Y); ctx.lineTo(px, GROUND_Y + 6); ctx.stroke();
+    }
+  }
+}
+
+draw();
+</script>
+</body>
+</html>
