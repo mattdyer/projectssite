@@ -62,7 +62,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [x] **Password Generator** — Adjustable length, character types, copy to clipboard.
 - [x] **Unit Converter** — Length, weight, temperature, currency conversions.
 - [x] **Age Calculator** — Input birthdate, display age in years/months/days/seconds.
-- [ ] **Countdown to Event** — Enter a date, see a live countdown.
+- [x] **Countdown to Event** — Enter a date, see a live countdown.
 
 ## Science / Education
 

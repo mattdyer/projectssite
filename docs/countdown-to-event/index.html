@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Countdown to Event</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f0f1a;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.5rem 1rem;
+    overflow-x: hidden;
+  }
+  h1 {
+    font-size: 1.8rem;
+    color: #7ecfff;
+    margin-bottom: 0.3rem;
+    text-align: center;
+  }
+  .subtitle { color: #888; margin-bottom: 1.5rem; font-size: 0.9rem; text-align: center; }
+
+  /* Input area */
+  .input-area {
+    background: #1a1a2e;
+    border: 1px solid #2a2a3e;
+    border-radius: 12px;
+    padding: 1.2rem;
+    width: 100%;
+    max-width: 500px;
+    margin-bottom: 2rem;
+  }
+  .input-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  input[type="text"] {
+    flex: 1; min-width: 120px;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #333; border-radius: 8px;
+    background: #0f0f1a; color: #e0e0e0;
+    font-size: 0.95rem; outline: none;
+  }
+  input[type="text"]:focus { border-color: #7ecfff; }
+  input[type="datetime-local"] {
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #333; border-radius: 8px;
+    background: #0f0f1a; color: #e0e0e0;
+    font-size: 0.95rem; outline: none;
+  }
+  input[type="datetime-local"]:focus { border-color: #7ecfff; }
+  button.add-btn {
+    padding: 0.6rem 1.2rem;
+    background: #7ecfff; color: #0f0f1a;
+    border: none; border-radius: 8px;
+    font-weight: 600; cursor: pointer; font-size: 0.95rem;
+    transition: background 0.2s;
+  }
+  button.add-btn:hover { background: #5bb8f5; }
+  button.add-btn:active { transform: scale(0.97); }
+
+  /* Preset buttons */
+  .presets { margin-top: 0.8rem; display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .preset-btn {
+    padding: 0.35rem 0.7rem;
+    background: #2a2a3e; color: #b0b0c0;
+    border: 1px solid #3a3a4e; border-radius: 6px;
+    font-size: 0.8rem; cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .preset-btn:hover { background: #3a3a5e; border-color: #7ecfff; color: #fff; }
+
+  /* Event cards */
+  .events-list {
+    width: 100%;
+    max-width: 700px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .event-card {
+    background: #1a1a2e;
+    border: 1px solid #2a2a3e;
+    border-radius: 14px;
+    padding: 1.2rem 1.4rem;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .event-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(126,207,255,0.12); }
+  .event-card.past { opacity: 0.5; }
+  .event-card.past::after {
+    content: '✓ PASSED';
+    position: absolute; top: 14px; right: 14px;
+    background: #2ecc71; color: #fff;
+    font-size: 0.7rem; font-weight: 700;
+    padding: 0.2rem 0.5rem; border-radius: 4px;
+  }
+  .event-name {
+    font-size: 1.15rem; font-weight: 600; color: #fff;
+    margin-bottom: 0.5rem; padding-right: 60px;
+  }
+  .event-date { font-size: 0.85rem; color: #888; margin-bottom: 1rem; }
+  .countdown-row {
+    display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;
+  }
+  .countdown-unit {
+    text-align: center; min-width: 60px;
+  }
+  .countdown-value {
+    font-size: 2rem; font-weight: 700; color: #7ecfff;
+    line-height: 1;
+  }
+  .countdown-label {
+    font-size: 0.7rem; color: #666; text-transform: uppercase;
+    letter-spacing: 1px; margin-top: 0.25rem;
+  }
+  .delete-btn {
+    position: absolute; top: 10px; right: 10px;
+    background: none; border: none; color: #555;
+    font-size: 1.2rem; cursor: pointer; padding: 0.2rem 0.4rem;
+    transition: color 0.2s;
+  }
+  .delete-btn:hover { color: #e74c3c; }
+
+  /* Celebration animation */
+  .event-card.passed-now {
+    animation: celebrate 0.6s ease;
+  }
+  @keyframes celebrate {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.05); box-shadow: 0 0 30px rgba(46,204,113,0.3); }
+    100% { transform: scale(1); }
+  }
+
+  /* Progress bar */
+  .progress-bar {
+    width: 100%; height: 4px; background: #2a2a3e;
+    border-radius: 2px; margin-top: 0.8rem; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, #7ecfff, #2ecc71);
+    border-radius: 2px; transition: width 0.5s;
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center; color: #555; font-size: 0.95rem;
+    padding: 2rem 0;
+  }
+
+  @media (max-width: 480px) {
+    h1 { font-size: 1.4rem; }
+    .countdown-value { font-size: 1.5rem; }
+    .countdown-unit { min-width: 45px; }
+    .event-card { padding: 1rem; }
+  }
+</style>
+</head>
+<body>
+<h1>⏱ Countdown to Event</h1>
+<p class="subtitle">Track multiple events with live countdowns</p>
+
+<div class="input-area">
+  <div class="input-row">
+    <input type="text" id="eventName" placeholder="Event name" maxlength="60">
+    <input type="datetime-local" id="eventDate">
+    <button class="add-btn" id="addBtn">Add</button>
+  </div>
+  <div class="presets">
+    <button class="preset-btn" data-days="1">🎆 New Year</button>
+    <button class="preset-btn" data-days="30">30 Days</button>
+    <button class="preset-btn" data-days="100">100 Days</button>
+    <button class="preset-btn" data-days="365">1 Year</button>
+    <button class="preset-btn" data-days="0.5" data-half="1">~12h</button>
+  </div>
+</div>
+
+<div class="events-list" id="eventsList">
+  <div class="empty-state" id="emptyState">No events yet — add one above!</div>
+</div>
+
+<script>
+(function() {
+  let events = JSON.parse(localStorage.getItem('countdownEvents') || '[]');
+
+  function save() { localStorage.setItem('countdownEvents', JSON.stringify(events)); }
+
+  function formatDate(d) {
+    return d.toLocaleString(undefined, {
+      weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  }
+
+  function renderAll() {
+    const list = document.getElementById('eventsList');
+    const empty = document.getElementById('emptyState');
+    list.querySelectorAll('.event-card').forEach(c => c.remove());
+    if (events.length === 0) {
+      if (!list.contains(empty)) list.appendChild(empty);
+      empty.style.display = '';
+      return;
+    }
+    empty.style.display = 'none';
+    events.forEach((ev, idx) => {
+      const card = document.createElement('div');
+      card.className = 'event-card';
+      card.id = 'ev-' + idx;
+      card.innerHTML = `
+        <button class="delete-btn" data-idx="${idx}">×</button>
+        <div class="event-name">${escHtml(ev.name)}</div>
+        <div class="event-date">${formatDate(new Date(ev.target))}</div>
+        <div class="countdown-row" id="cd-${idx}"></div>
+        <div class="progress-bar"><div class="progress-fill" id="pf-${idx}" style="width:0%"></div></div>
+      `;
+      card.querySelector('.delete-btn').addEventListener('click', () => {
+        events.splice(idx, 1); save(); renderAll(); tick();
+      });
+      list.appendChild(card);
+    });
+  }
+
+  function escHtml(s) {
+    const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+  }
+
+  function tick() {
+    events.forEach((ev, idx) => {
+      const el = document.getElementById('cd-' + idx);
+      if (!el) return;
+      const now = Date.now();
+      const target = ev.target;
+      const past = now >= target;
+      const card = document.getElementById('ev-' + idx);
+      const totalMs = target - (ev.created || target);
+      const elapsed = now - (ev.created || target);
+      const progress = totalMs > 0 ? Math.min(100, Math.max(0, (elapsed / totalMs) * 100)) : 100;
+      const pf = document.getElementById('pf-' + idx);
+      if (pf) pf.style.width = progress + '%';
+
+      if (past) {
+        el.innerHTML = '<span style="color:#2ecc71;font-size:1.3rem;font-weight:700;">🎉 Event has passed!</span>';
+        card.classList.add('past');
+        card.classList.remove('passed-now');
+      } else {
+        const diff = target - now;
+        const d = Math.floor(diff / 86400000);
+        const h = Math.floor((diff % 86400000) / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        el.innerHTML = `
+          <div class="countdown-unit"><div class="countdown-value">${d}</div><div class="countdown-label">Days</div></div>
+          <div class="countdown-unit"><div class="countdown-value">${String(h).padStart(2,'0')}</div><div class="countdown-label">Hrs</div></div>
+          <div class="countdown-unit"><div class="countdown-value">${String(m).padStart(2,'0')}</div><div class="countdown-label">Min</div></div>
+          <div class="countdown-unit"><div class="countdown-value">${String(s).padStart(2,'0')}</div><div class="countdown-label">Sec</div></div>
+        `;
+        card.classList.remove('past', 'passed-now');
+      }
+    });
+  }
+
+  function addEvent(name, target) {
+    if (!name.trim() || !target) return;
+    events.push({ name: name.trim(), target: new Date(target).getTime(), created: Date.now() });
+    save(); renderAll();
+    document.getElementById('eventName').value = '';
+  }
+
+  document.getElementById('addBtn').addEventListener('click', () => {
+    addEvent(
+      document.getElementById('eventName').value,
+      document.getElementById('eventDate').value
+    );
+  });
+  document.getElementById('eventName').addEventListener('keydown', e => { if (e.key === 'Enter') addEvent(e.target.value, document.getElementById('eventDate').value); });
+
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const days = parseFloat(btn.dataset.days) || 1;
+      const half = btn.dataset.half === '1' ? 0.5 : 1;
+      const ms = days * 24 * 3600 * 1000 * half;
+      const target = Date.now() + ms;
+      document.getElementById('eventDate').value = new Date(target).toISOString().slice(0, 16);
+      document.getElementById('eventName').value = days === 1 ? '🎆 New Year Countdown' :
+        days === 365 ? '🎂 1 Year From Now' :
+        days === 100 ? '🚀 100 Days From Now' :
+        `⏳ ${days} Days From Now`;
+    });
+  });
+
+  renderAll();
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>
