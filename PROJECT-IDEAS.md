@@ -58,7 +58,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [x] **Joke of the Day** — Fetch a random joke from an API and display it.
 - [x] **Pomodoro Timer** — 25-min work / 5-min break cycle with visual progress.
 - [x] **Breathing Exercise** — Animated circle expands/contracts for guided breathing.
-- [ ] **QR Code Generator** — Type text, render a QR code on canvas.
+- [x] **QR Code Generator** — Type text, render a QR code on canvas.
 - [x] **Password Generator** — Adjustable length, character types, copy to clipboard.
 - [x] **Unit Converter** — Length, weight, temperature, currency conversions.
 - [x] **Age Calculator** — Input birthdate, display age in years/months/days/seconds.
@@ -69,9 +69,9 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [x] **Solar System Simulator** — Planets orbiting the sun, zoomable, clickable info.
 - [x] **Pendulum Simulator** — Adjustable length/mass, watch energy exchange.
 - [x] **Projectile Motion** — Launch a projectile, adjust angle and velocity, watch the arc.
+- [x] **Math Function Grapher** — Type a formula like `sin(x)*x`, see the graph.
 - [ ] **Periodic Table Explorer** — Click elements to see properties.
 - [ ] **Weather Map** — Plot current weather data on a simple map.
-- [ ] **Math Function Grapher** — Type a formula like `sin(x)*x`, see the graph.
 
 ## Multiplayer / Network
 

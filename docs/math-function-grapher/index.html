@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Math Function Grapher</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0a0a1a;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+header {
+    text-align: center;
+    padding: 1.2rem 1rem 0.8rem;
+    background: linear-gradient(135deg, #0a0a1a, #1a1a3a);
+    border-bottom: 1px solid #2a2a4a;
+}
+header h1 {
+    font-size: 1.4rem;
+    color: #7ecfff;
+    margin-bottom: 0.3rem;
+}
+header p {
+    font-size: 0.85rem;
+    color: #888;
+}
+.controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 1rem;
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
+}
+.input-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.input-row label {
+    font-size: 0.85rem;
+    color: #aaa;
+    min-width: 60px;
+}
+.input-row input, .input-row select {
+    flex: 1;
+    min-width: 120px;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid #333;
+    border-radius: 6px;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-size: 0.95rem;
+    font-family: 'Courier New', monospace;
+}
+.input-row input:focus, .input-row select:focus {
+    outline: none;
+    border-color: #7ecfff;
+}
+.btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+.btn-primary {
+    background: #7ecfff;
+    color: #0a0a1a;
+}
+.btn-primary:hover { background: #5bb8f5; }
+.btn-danger {
+    background: #ff6b6b;
+    color: #fff;
+}
+.btn-danger:hover { background: #e05555; }
+.btn-secondary {
+    background: #2a2a4a;
+    color: #c0c0d0;
+}
+.btn-secondary:hover { background: #3a3a5a; }
+.func-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 0 1rem;
+}
+.func-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    background: #1a1a2e;
+    border-radius: 6px;
+    border-left: 3px solid;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+}
+.func-item .color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.func-item .func-text {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.func-item .remove-btn {
+    background: none;
+    border: none;
+    color: #ff6b6b;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0 0.3rem;
+    line-height: 1;
+}
+.func-item .remove-btn:hover { color: #ff9999; }
+.canvas-wrap {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0.5rem;
+    min-height: 300px;
+}
+canvas {
+    background: #0d0d20;
+    border: 1px solid #2a2a4a;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 860px;
+    height: auto;
+    touch-action: none;
+}
+.presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+.preset-btn {
+    padding: 0.3rem 0.6rem;
+    border: 1px solid #333;
+    border-radius: 4px;
+    background: #1a1a2e;
+    color: #aaa;
+    font-size: 0.78rem;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    transition: all 0.2s;
+}
+.preset-btn:hover {
+    border-color: #7ecfff;
+    color: #7ecfff;
+}
+.error-msg {
+    color: #ff6b6b;
+    font-size: 0.85rem;
+    padding: 0 1rem;
+    min-height: 1.2em;
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
+}
+.zoom-controls {
+    display: flex;
+    gap: 0.3rem;
+    align-items: center;
+}
+.zoom-controls span {
+    font-size: 0.8rem;
+    color: #888;
+}
+@media (max-width: 480px) {
+    header h1 { font-size: 1.1rem; }
+    .input-row { flex-direction: column; align-items: stretch; }
+    .input-row label { min-width: auto; }
+}
+</style>
+</head>
+<body>
+<header>
+    <h1>Math Function Grapher</h1>
+    <p>Type a formula, press Enter, watch it plot</p>
+</header>
+
+<div class="controls">
+    <div class="input-row">
+        <label>f(x) =</label>
+        <input type="text" id="funcInput" placeholder="sin(x), x^2, cos(x)*x" autofocus>
+        <button class="btn btn-primary" id="addBtn">Add</button>
+    </div>
+    <div class="input-row">
+        <div class="zoom-controls">
+            <span>Zoom:</span>
+            <button class="btn btn-secondary" id="zoomIn">+</button>
+            <button class="btn btn-secondary" id="zoomOut">−</button>
+            <button class="btn btn-secondary" id="resetView">Reset</button>
+        </div>
+        <button class="btn btn-danger" id="clearBtn" style="margin-left:auto;">Clear All</button>
+    </div>
+</div>
+
+<div class="error-msg" id="errorMsg"></div>
+
+<div class="presets">
+    <span style="font-size:0.8rem;color:#888;line-height:2;">Try:</span>
+    <button class="preset-btn" data-func="sin(x)">sin(x)</button>
+    <button class="preset-btn" data-func="cos(x)">cos(x)</button>
+    <button class="preset-btn" data-func="tan(x)">tan(x)</button>
+    <button class="preset-btn" data-func="x^2">x^2</button>
+    <button class="preset-btn" data-func="x^3">x^3</button>
+    <button class="preset-btn" data-func="sqrt(x)">sqrt(x)</button>
+    <button class="preset-btn" data-func="abs(x)">abs(x)</button>
+    <button class="preset-btn" data-func="log(x)">log(x)</button>
+    <button class="preset-btn" data-func="1/x">1/x</button>
+    <button class="preset-btn" data-func="sin(x)/x">sin(x)/x</button>
+    <button class="preset-btn" data-func="sin(x)*cos(2*x)">sin·cos</button>
+    <button class="preset-btn" data-func="x*sin(1/x)">x·sin(1/x)</button>
+    <button class="preset-btn" data-func="sin(x)+sin(2.5*x)">beat</button>
+    <button class="preset-btn" data-func="sin(x)*x">x·sin</button>
+    <button class="preset-btn" data-func="cos(x)+sin(x)">cos+sin</button>
+    <button class="preset-btn" data-func="floor(x)">floor</button>
+    <button class="preset-btn" data-func="sign(x)">sign</button>
+    <button class="preset-btn" data-func="1/(1+e^(-x))">sigmoid</button>
+</div>
+
+<div class="func-list" id="funcList"></div>
+
+<div class="canvas-wrap">
+    <canvas id="graph" width="860" height="500"></canvas>
+</div>
+
+<script>
+// --- Config ---
+const COLORS = [
+    '#7ecfff', '#ff9ff3', '#54e346', '#ffa502',
+    '#ff6b6b', '#a29bfe', '#fd79a8', '#00cec9',
+    '#e17055', '#00b894', '#6c5ce7', '#fdcb6e'
+];
+
+// --- State ---
+let functions = [];
+let viewXMin = -10, viewXMax = 10, viewYMin = -5, viewYMax = 5;
+let dragging = false, dragStart = null, dragViewStart = null;
+let pinchDist = 0;
+
+const canvas = document.getElementById('graph');
+const ctx = canvas.getContext('2d');
+const funcInput = document.getElementById('funcInput');
+const errorMsg = document.getElementById('errorMsg');
+const funcListEl = document.getElementById('funcList');
+
+// --- Math parser ---
+function buildMathFunc(expr) {
+    // Replace math notation with JS equivalents
+    let e = expr.toLowerCase()
+        .replace(/\bsin\b/g, 'Math.sin')
+        .replace(/\bcos\b/g, 'Math.cos')
+        .replace(/\btan\b/g, 'Math.tan')
+        .replace(/\basin\b/g, 'Math.asin')
+        .replace(/\bacos\b/g, 'Math.acos')
+        .replace(/\batan\b/g, 'Math.atan')
+        .replace(/\batan2\b/g, 'Math.atan2')
+        .replace(/\bsqrt\b/g, 'Math.sqrt')
+        .replace(/\babs\b/g, 'Math.abs')
+        .replace(/\blog\b/g, 'Math.log')
+        .replace(/\blog10\b/g, 'Math.log10')
+        .replace(/\blog2\b/g, 'Math.log2')
+        .replace(/\bexp\b/g, 'Math.exp')
+        .replace(/\bfloor\b/g, 'Math.floor')
+        .replace(/\bceil\b/g, 'Math.ceil')
+        .replace(/\bround\b/g, 'Math.round')
+        .replace(/\bsign\b/g, 'Math.sign')
+        .replace(/\bpow\b/g, 'Math.pow')
+        .replace(/\bpi\b/g, 'Math.PI')
+        .replace(/\be\b/g, 'Math.E')
+        .replace(/\be^/g, 'Math.E**')
+        .replace(/\bπ\b/g, 'Math.PI')
+        .replace(/\^/g, '**');
+
+    // Implicit multiplication: 2x -> 2*x, x( -> x*(, )x -> )*x, )( -> )*(
+    e = e.replace(/(\d)([a-zA-Z(])/g, '$1*$2');
+    e = e.replace(/(\))(\()/g, '$1*$2');
+    e = e.replace(/(\))([a-zA-Z])/g, '$1*$2');
+
+    try {
+        const fn = new Function('x', 'try { return ' + e + '; } catch(e) { return NaN; }');
+        // Test it
+        fn(1); fn(0); fn(-1);
+        return fn;
+    } catch(err) {
+        throw new Error('Invalid expression: ' + err.message);
+    }
+}
+
+// --- Coordinate transforms ---
+function worldToScreenX(x) {
+    return ((x - viewXMin) / (viewXMax - viewXMin)) * canvas.width;
+}
+function worldToScreenY(y) {
+    return canvas.height - ((y - viewYMin) / (viewYMax - viewYMin)) * canvas.height;
+}
+function screenToWorldX(sx) {
+    return viewXMin + (sx / canvas.width) * (viewXMax - viewXMin);
+}
+function screenToWorldY(sy) {
+    return viewYMax - (sy / canvas.height) * (viewYMax - viewYMin);
+}
+
+// --- Drawing ---
+function drawGrid() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Background
+    ctx.fillStyle = '#0d0d20';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Determine grid spacing
+    function getGridStep(range) {
+        const rough = range / 10;
+        const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+        const norm = rough / mag;
+        if (norm < 1.5) return mag;
+        if (norm < 3.5) return 2 * mag;
+        if (norm < 7.5) return 5 * mag;
+        return 10 * mag;
+    }
+
+    const xStep = getGridStep(viewXMax - viewXMin);
+    const yStep = getGridStep(viewYMax - viewYMin);
+
+    // Minor grid
+    ctx.strokeStyle = '#151530';
+    ctx.lineWidth = 0.5;
+    const minorXStep = xStep / 5;
+    const minorYStep = yStep / 5;
+
+    let xStart = Math.floor(viewXMin / minorXStep) * minorXStep;
+    for (let x = xStart; x <= viewXMax; x += minorXStep) {
+        const sx = worldToScreenX(x);
+        ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, canvas.height); ctx.stroke();
+    }
+    let yStart = Math.floor(viewYMin / minorYStep) * minorYStep;
+    for (let y = yStart; y <= viewYMax; y += minorYStep) {
+        const sy = worldToScreenY(y);
+        ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(canvas.width, sy); ctx.stroke();
+    }
+
+    // Major grid
+    ctx.strokeStyle = '#1e1e40';
+    ctx.lineWidth = 0.8;
+    xStart = Math.floor(viewXMin / xStep) * xStep;
+    for (let x = xStart; x <= viewXMax; x += xStep) {
+        const sx = worldToScreenX(x);
+        ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, canvas.height); ctx.stroke();
+    }
+    yStart = Math.floor(viewYMin / yStep) * yStep;
+    for (let y = yStart; y <= viewYMax; y += yStep) {
+        const sy = worldToScreenY(y);
+        ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(canvas.width, sy); ctx.stroke();
+    }
+
+    // Axes
+    ctx.strokeStyle = '#444466';
+    ctx.lineWidth = 1.5;
+    // X axis
+    const xAxisY = worldToScreenY(0);
+    if (xAxisY >= 0 && xAxisY <= canvas.height) {
+        ctx.beginPath(); ctx.moveTo(0, xAxisY); ctx.lineTo(canvas.width, xAxisY); ctx.stroke();
+    }
+    // Y axis
+    const yAxisX = worldToScreenX(0);
+    if (yAxisX >= 0 && yAxisX <= canvas.width) {
+        ctx.beginPath(); ctx.moveTo(yAxisX, 0); ctx.lineTo(yAxisX, canvas.height); ctx.stroke();
+    }
+
+    // Labels
+    ctx.fillStyle = '#666688';
+    ctx.font = '11px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    xStart = Math.floor(viewXMin / xStep) * xStep;
+    for (let x = xStart; x <= viewXMax; x += xStep) {
+        if (Math.abs(x) < xStep * 0.01) continue;
+        const sx = worldToScreenX(x);
+        const labelY = Math.min(Math.max(xAxisY + 14, 14), canvas.height - 4);
+        ctx.fillText(formatNum(x), sx, labelY);
+    }
+    ctx.textAlign = 'right';
+    yStart = Math.floor(viewYMin / yStep) * yStep;
+    for (let y = yStart; y <= viewYMax; y += yStep) {
+        if (Math.abs(y) < yStep * 0.01) continue;
+        const sy = worldToScreenY(y);
+        const labelX = Math.min(Math.max(yAxisX - 6, 30), canvas.width - 4);
+        ctx.fillText(formatNum(y), labelX, sy + 4);
+    }
+
+    // Origin label
+    if (yAxisX >= 0 && yAxisX <= canvas.width && xAxisY >= 0 && xAxisY <= canvas.height) {
+        ctx.fillStyle = '#555577';
+        ctx.textAlign = 'right';
+        ctx.fillText('0', yAxisX - 5, xAxisY + 14);
+    }
+}
+
+function formatNum(n) {
+    if (Math.abs(n) >= 1000 || (Math.abs(n) < 0.01 && n !== 0)) return n.toExponential(1);
+    return parseFloat(n.toPrecision(4)).toString();
+}
+
+function drawFunction(fn, color) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    let started = false;
+    const pixelStep = 1; // one pixel at a time
+    for (let px = 0; px <= canvas.width; px += pixelStep) {
+        const x = screenToWorldX(px);
+        const y = fn(x);
+        const py = worldToScreenY(y);
+        if (isNaN(y) || !isFinite(y) || py < -1000 || py > canvas.height + 1000) {
+            started = false;
+            continue;
+        }
+        if (!started) {
+            ctx.moveTo(px, py);
+            started = true;
+        } else {
+            ctx.lineTo(px, py);
+        }
+    }
+    ctx.stroke();
+}
+
+function render() {
+    drawGrid();
+    functions.forEach(f => drawFunction(f.fn, f.color));
+}
+
+// --- Functions management ---
+function addFunction(expr) {
+    try {
+        const fn = buildMathFunc(expr);
+        const color = COLORS[functions.length % COLORS.length];
+        functions.push({ expr, fn, color });
+        funcInput.value = '';
+        errorMsg.textContent = '';
+        updateFuncList();
+        render();
+    } catch(err) {
+        errorMsg.textContent = err.message;
+    }
+}
+
+function removeFunction(index) {
+    functions.splice(index, 1);
+    // Reassign colors
+    functions.forEach((f, i) => f.color = COLORS[i % COLORS.length]);
+    updateFuncList();
+    render();
+}
+
+function clearAll() {
+    functions = [];
+    errorMsg.textContent = '';
+    updateFuncList();
+    render();
+}
+
+function updateFuncList() {
+    funcListEl.innerHTML = '';
+    functions.forEach((f, i) => {
+        const item = document.createElement('div');
+        item.className = 'func-item';
+        item.style.borderLeftColor = f.color;
+        item.innerHTML = `
+            <span class="color-dot" style="background:${f.color}"></span>
+            <span class="func-text">f(x) = ${f.expr}</span>
+            <button class="remove-btn" data-index="${i}">×</button>
+        `;
+        funcListEl.appendChild(item);
+    });
+    funcListEl.querySelectorAll('.remove-btn').forEach(btn => {
+        btn.addEventListener('click', () => removeFunction(parseInt(btn.dataset.index)));
+    });
+}
+
+// --- Zoom / Pan ---
+function zoomAt(cx, cy, factor) {
+    const wx = screenToWorldX(cx);
+    const wy = screenToWorldY(cy);
+    const xRange = (viewXMax - viewXMin) * factor;
+    const yRange = (viewYMax - viewYMin) * factor;
+    const xRatio = (cx / canvas.width);
+    const yRatio = 1 - (cy / canvas.height);
+    viewXMin = wx - xRange * xRatio;
+    viewXMax = wx + xRange * (1 - xRatio);
+    viewYMin = wy - yRange * yRatio;
+    viewYMax = wy + yRange * (1 - yRatio);
+    render();
+}
+
+function resetView() {
+    viewXMin = -10; viewXMax = 10;
+    viewYMin = -5; viewYMax = 5;
+    render();
+}
+
+// Mouse events for pan & zoom
+canvas.addEventListener('mousedown', e => {
+    if (e.button === 0) {
+        dragging = true;
+        dragStart = { x: e.offsetX, y: e.offsetY };
+        dragViewStart = { xMin: viewXMin, xMax: viewXMax, yMin: viewYMin, yMax: viewYMax };
+        canvas.style.cursor = 'grabbing';
+    }
+});
+canvas.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const dx = e.offsetX - dragStart.x;
+    const dy = e.offsetY - dragStart.y;
+    const xRange = dragViewStart.xMax - dragViewStart.xMin;
+    const yRange = dragViewStart.yMax - dragViewStart.yMin;
+    viewXMin = dragViewStart.xMin - (dx / canvas.width) * xRange;
+    viewXMax = dragViewStart.xMax - (dx / canvas.width) * xRange;
+    viewYMin = dragViewStart.yMin + (dy / canvas.height) * yRange;
+    viewYMax = dragViewStart.yMax + (dy / canvas.height) * yRange;
+    render();
+});
+canvas.addEventListener('mouseup', () => {
+    dragging = false;
+    canvas.style.cursor = 'grab';
+});
+canvas.addEventListener('mouseleave', () => {
+    dragging = false;
+    canvas.style.cursor = 'grab';
+});
+canvas.style.cursor = 'grab';
+
+canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const factor = e.deltaY > 0 ? 1.15 : 1 / 1.15;
+    zoomAt(e.offsetX, e.offsetY, factor);
+}, { passive: false });
+
+// Touch events for pan & pinch-zoom
+let lastTouchDist = 0;
+let lastTouchMid = null;
+
+canvas.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) {
+        dragging = true;
+        const t = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        dragStart = { x: t.clientX - rect.left, y: t.clientY - rect.top };
+        dragViewStart = { xMin: viewXMin, xMax: viewXMax, yMin: viewYMin, yMax: viewYMax };
+    } else if (e.touches.length === 2) {
+        dragging = false;
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        lastTouchDist = Math.sqrt(dx*dx + dy*dy);
+        const rect = canvas.getBoundingClientRect();
+        lastTouchMid = {
+            x: ((e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left),
+            y: ((e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top)
+        };
+    }
+    e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+    if (e.touches.length === 1 && dragging) {
+        const t = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        const px = t.clientX - rect.left;
+        const py = t.clientY - rect.top;
+        const dx = px - dragStart.x;
+        const dy = py - dragStart.y;
+        const xRange = dragViewStart.xMax - dragViewStart.xMin;
+        const yRange = dragViewStart.yMax - dragViewStart.yMin;
+        viewXMin = dragViewStart.xMin - (dx / canvas.width) * xRange;
+        viewXMax = dragViewStart.xMax - (dx / canvas.width) * xRange;
+        viewYMin = dragViewStart.yMin + (dy / canvas.height) * yRange;
+        viewYMax = dragViewStart.yMax + (dy / canvas.height) * yRange;
+        render();
+    } else if (e.touches.length === 2 && lastTouchDist > 0) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const factor = lastTouchDist / dist;
+        if (lastTouchMid) zoomAt(lastTouchMid.x, lastTouchMid.y, factor);
+        lastTouchDist = dist;
+    }
+    e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+    if (e.touches.length < 2) {
+        lastTouchDist = 0;
+        lastTouchMid = null;
+    }
+    if (e.touches.length === 0) dragging = false;
+});
+
+// --- Button handlers ---
+document.getElementById('addBtn').addEventListener('click', () => {
+    const val = funcInput.value.trim();
+    if (val) addFunction(val);
+});
+funcInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+        const val = funcInput.value.trim();
+        if (val) addFunction(val);
+    }
+});
+document.getElementById('clearBtn').addEventListener('click', clearAll);
+document.getElementById('zoomIn').addEventListener('click', () => zoomAt(canvas.width/2, canvas.height/2, 0.8));
+document.getElementById('zoomOut').addEventListener('click', () => zoomAt(canvas.width/2, canvas.height/2, 1.25));
+document.getElementById('resetView').addEventListener('click', resetView);
+
+// Preset buttons
+document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        funcInput.value = btn.dataset.func;
+        addFunction(btn.dataset.func);
+    });
+});
+
+// Handle high-DPI and resize
+function resizeCanvas() {
+    const wrap = canvas.parentElement;
+    const w = Math.min(860, wrap.clientWidth - 1);
+    const h = Math.max(300, Math.min(500, window.innerHeight * 0.45));
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    canvas.width = w * (window.devicePixelRatio || 1);
+    canvas.height = h * (window.devicePixelRatio || 1);
+    ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+    render();
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+</script>
+</body>
+</html>
