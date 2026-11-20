@@ -75,5 +75,5 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 
 ## Multiplayer / Network
 
-- [ ] **Pictionary Clone** — One person draws, others guess via shared canvas (localStorage).
+- [x] **Pictionary Clone** — One person draws, others guess via shared canvas (localStorage).
 - [ ] **Chat Room** — Simple browser-to-browser chat using WebRTC or localStorage events.

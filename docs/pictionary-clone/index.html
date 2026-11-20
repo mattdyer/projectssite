@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pictionary Clone</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 1rem;
+}
+h1 {
+  font-size: 1.6rem;
+  margin-bottom: 0.5rem;
+  color: #7ecfff;
+  text-align: center;
+}
+.subtitle {
+  font-size: 0.85rem;
+  color: #888;
+  margin-bottom: 1rem;
+  text-align: center;
+  max-width: 500px;
+}
+#status-bar {
+  background: #16213e;
+  border: 1px solid #2a2a4e;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  margin-bottom: 0.75rem;
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+#status-bar .word-display {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #ffdd57;
+  letter-spacing: 0.3rem;
+}
+#status-bar .word-masked {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #ffdd57;
+  letter-spacing: 0.2rem;
+}
+#timer {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #7ecfff;
+}
+#timer.warning { color: #ff6b6b; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+#player-info {
+  background: #16213e;
+  border: 1px solid #2a2a4e;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+#player-info .role {
+  font-weight: bold;
+  font-size: 1rem;
+}
+#player-info .role.drawing { color: #4ecdc4; }
+#player-info .role.guessing { color: #ffdd57; }
+#player-name {
+  background: #0f3460;
+  border: 1px solid #2a2a4e;
+  border-radius: 6px;
+  color: #e0e0e0;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9rem;
+}
+
+#canvas-container {
+  position: relative;
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  margin-bottom: 0.75rem;
+}
+#canvas {
+  display: block;
+  cursor: crosshair;
+  touch-action: none;
+}
+#draw-layer {
+  position: absolute;
+  top: 0; left: 0;
+  pointer-events: none;
+}
+
+#tools {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+  max-width: 600px;
+}
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #16213e;
+  border: 1px solid #2a2a4e;
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+}
+.tool-group label {
+  font-size: 0.75rem;
+  color: #888;
+}
+.color-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.color-btn:hover { transform: scale(1.15); }
+.color-btn.active { border-color: #fff; transform: scale(1.2); }
+.tool-btn {
+  background: #0f3460;
+  border: 1px solid #2a2a4e;
+  color: #e0e0e0;
+  border-radius: 6px;
+  padding: 0.4rem 0.7rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.15s;
+}
+.tool-btn:hover { background: #1a4a7a; }
+.tool-btn.active { background: #7ecfff; color: #1a1a2e; }
+#brush-size {
+  width: 60px;
+  accent-color: #7ecfff;
+}
+
+#guess-area {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 600px;
+}
+#guess-input {
+  flex: 1;
+  background: #16213e;
+  border: 1px solid #2a2a4e;
+  color: #e0e0e0;
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  font-size: 1rem;
+}
+#guess-input:focus { outline: none; border-color: #7ecfff; }
+#guess-btn {
+  background: #7ecfff;
+  color: #1a1a2e;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: background 0.15s;
+}
+#guess-btn:hover { background: #5bb8e8; }
+#guess-btn:disabled { opacity: 0.4; cursor: default; }
+
+#guess-log {
+  width: 100%;
+  max-width: 600px;
+  margin-top: 0.75rem;
+  background: #16213e;
+  border: 1px solid #2a2a4e;
+  border-radius: 8px;
+  padding: 0.5rem;
+  max-height: 150px;
+  overflow-y: auto;
+  font-size: 0.85rem;
+}
+#guess-log .guess-entry {
+  padding: 0.25rem 0.4rem;
+  border-radius: 4px;
+  margin-bottom: 0.2rem;
+}
+#guess-log .guess-entry.correct {
+  background: rgba(78, 205, 196, 0.2);
+  color: #4ecdc4;
+  font-weight: bold;
+}
+#guess-log .guess-entry.wrong {
+  color: #888;
+}
+#guess-log .guess-entry.system {
+  color: #ffdd57;
+  font-style: italic;
+}
+
+#setup-panel {
+  background: #16213e;
+  border: 1px solid #2a2a4e;
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+#setup-panel h2 { margin-bottom: 1rem; color: #7ecfff; }
+#setup-panel label { display: block; margin-bottom: 0.3rem; font-size: 0.9rem; color: #aaa; }
+#setup-panel input, #setup-panel select {
+  width: 100%;
+  background: #0f3460;
+  border: 1px solid #2a2a4e;
+  color: #e0e0e0;
+  border-radius: 6px;
+  padding: 0.5rem;
+  margin-bottom: 0.8rem;
+  font-size: 1rem;
+}
+#setup-panel .btn-start {
+  background: #7ecfff;
+  color: #1a1a2e;
+  border: none;
+  border-radius: 8px;
+  padding: 0.7rem 2rem;
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+#setup-panel .btn-start:hover { background: #5bb8e8; }
+
+.hidden { display: none !important; }
+
+#round-over-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+#round-over-panel {
+  background: #16213e;
+  border: 2px solid #7ecfff;
+  border-radius: 16px;
+  padding: 2rem;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+}
+#round-over-panel h2 { color: #ffdd57; margin-bottom: 0.5rem; font-size: 1.5rem; }
+#round-over-panel .winner { color: #4ecdc4; font-size: 1.2rem; margin-bottom: 0.5rem; }
+#round-over-panel .points { color: #888; font-size: 0.9rem; margin-bottom: 1rem; }
+#next-btn {
+  background: #7ecfff;
+  color: #1a1a2e;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.5rem;
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+  margin: 0.25rem;
+}
+
+@media (max-width: 480px) {
+  body { padding: 0.5rem; }
+  h1 { font-size: 1.3rem; }
+  #canvas-container { width: 100% !important; }
+  #tools { gap: 0.3rem; }
+  .color-btn { width: 20px; height: 20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Setup Panel -->
+<div id="setup-panel">
+  <h2>🎨 Pictionary Clone</h2>
+  <p style="margin-bottom:1rem;font-size:0.85rem;color:#888;">Open this page in multiple tabs to play together! Each tab is a separate room.</p>
+  <label for="player-name-input">Your Name</label>
+  <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="15">
+  <label for="room-name-input">Room Name</label>
+  <input type="text" id="room-name-input" placeholder="Enter room name" maxlength="20">
+  <label for="time-select">Round Timer</label>
+  <select id="time-select">
+    <option value="60">60 seconds</option>
+    <option value="90" selected>90 seconds</option>
+    <option value="120">120 seconds</option>
+  </select>
+  <br>
+  <button class="btn-start" id="join-btn">Join Room</button>
+</div>
+
+<!-- Game UI -->
+<div id="game-ui" class="hidden">
+  <h1>🎨 Pictionary Clone</h1>
+  <p class="subtitle">Open in a second tab with the same room name to play together!</p>
+
+  <div id="status-bar">
+    <span>Word: <span id="word-display" class="word-masked"></span></span>
+    <span id="timer">1:30</span>
+    <span id="score-display">Score: 0</span>
+  </div>
+
+  <div id="player-info">
+    <span class="role" id="role-display">Loading...</span>
+    <span>You: <strong id="display-name"></strong></span>
+  </div>
+
+  <div id="canvas-container">
+    <canvas id="canvas" width="580" height="400"></canvas>
+    <canvas id="draw-layer" width="580" height="400"></canvas>
+  </div>
+
+  <div id="tools">
+    <div class="tool-group">
+      <label>Color</label>
+      <button class="color-btn active" data-color="#000000" style="background:#000"></button>
+      <button class="color-btn" data-color="#ff0000" style="background:#ff0000"></button>
+      <button class="color-btn" data-color="#00aa00" style="background:#0a0"></button>
+      <button class="color-btn" data-color="#0055ff" style="background:#00f"></button>
+      <button class="color-btn" data-color="#ffaa00" style="background:#fa0"></button>
+      <button class="color-btn" data-color="#8844cc" style="background:#84c"></button>
+      <button class="color-btn" data-color="#ff69b4" style="background:#f6b"></button>
+      <button class="color-btn" data-color="#ffffff" style="background:#fff"></button>
+    </div>
+    <div class="tool-group">
+      <label>Brush: <span id="brush-val">5</span>px</label>
+      <input type="range" id="brush-size" min="1" max="30" value="5">
+    </div>
+    <div class="tool-group">
+      <button class="tool-btn" id="eraser-btn">🧹 Eraser</button>
+      <button class="tool-btn" id="clear-btn">🗑️ Clear</button>
+    </div>
+  </div>
+
+  <div id="guess-area">
+    <input type="text" id="guess-input" placeholder="Type your guess..." maxlength="40" autocomplete="off">
+    <button id="guess-btn">Guess!</button>
+  </div>
+
+  <div id="guess-log"></div>
+</div>
+
+<!-- Round Over Overlay -->
+<div id="round-over-overlay" class="hidden">
+  <div id="round-over-panel">
+    <h2 id="round-over-title">Round Over!</h2>
+    <p class="winner" id="round-over-winner"></p>
+    <p class="points" id="round-over-points"></p>
+    <button id="next-btn">Next Round</button>
+  </div>
+</div>
+
+<script>
+// ==================== WORD BANK ====================
+const WORDS = [
+  "sun","moon","star","tree","house","car","dog","cat","fish","bird",
+  "flower","mountain","ocean","beach","pizza","ice cream","rainbow","rocket",
+  "bicycle","umbrella","guitar","piano","camera","phone","book","clock",
+  "apple","banana","grape","cake","cookie","chocolate","pizza","burger",
+  "coffee","teapot","dragon","unicorn","robot","alien","ghost","vampire",
+  "pirate","ninja","wizard","castle","ship","plane","helicopter","submarine",
+  "volcano","earthquake","tornado","hurricane","lightning","thunder",
+  "snowman","candy","lollipop","cotton candy","popcorn","sandwich",
+  "hot dog","french fry","chips","dip","salad","pasta","sushi",
+  "taco","burrito","pancake","waffle","muffin","donut","pie","torte",
+  "cherry","strawberry","blueberry","watermelon","pineapple","mango",
+  "lemon","lime","coconut","peanut","walnut","almond","candle","fire",
+  "smoke","ash","spark","ember","flame","torch","lantern","fountain",
+  "bridge","tunnel","highway","railway","fence","gate","wall","tower",
+  "windmill","lighthouse","lighthouse","church","school","hospital",
+  "library","museum","theater","stadium","circus","carnival","fairground",
+  "rollercoaster","carousel"," Ferris wheel","bungee","parachute","helmet",
+  "sword","shield","bow","arrow","lance","spear","dagger","crossbow",
+  "treasure","chest","map","compass","key","lock","safe","vault",
+  "crown","ring","necklace","bracelet","earring","gem","diamond","ruby",
+  "emerald","sapphire","pearl","gold","silver","coin","dollar","euro",
+  "pocket watch","hourglass","calendar","schedule","diary","journal",
+  "newspaper","magazine","poster","banner","flag","bunting","confetti",
+  "balloon","kite","whistle","bugle","horn","drum","trumpet","flute",
+  "violin","cello","harp","xylophone","tambourine","cymbal","organ",
+  "accordion","banjo","mandolin","sitar","oboe","bassoon","clarinet",
+  "saxophone","maracas","bongo","conga","steel drum","gong","bell",
+  "chime","harpsichord","synthesizer","microphone","speaker","radio",
+  "television","monitor","tablet","laptop","printer","scanner","router",
+  "keyboard","mouse","joystick","controller","headphone","earbuds",
+  "webcam","projector","mirror","magnifier","telescope","binoculars",
+  "microscope","compass","thermometer","barometer","seismograph",
+  "calculator","abacus","ruler","protractor","compass-draw","triangle",
+  "paintbrush","canvas","easel","palette","charcoal","pastel","crayon",
+  "scissors","glue","tape","stapler","paperclip","push pin","thimble",
+  "needle","thread","button","zipper","sleeve","collar","cuff","hem",
+  "boot","shoe","sandal","slipper","heel","sneaker","clog","moccasin",
+  "glove"," mitten","scarf","hat","cap","visor","helmet","hood","cowl",
+  "apron","vest","jacket","coat","blazer","poncho","cape","cloak",
+  "kimono","sarong","turban","fedora","beret","cowboy","top hat",
+  "saddle","rein","bridle","horseshoe","trumpet","tuba","cornet",
+  "piccolo","bass guitar","acoustic","electric","amplifier","cabinet",
+  "speaker","subwoofer","reverb","distortion","fuzz","wah","chorus",
+  "flanger","phaser","octave","loop","pedal","rack","mixer","console",
+  "studio","booth","stage","podium","orchestra","choir","ensemble",
+  "quartet","trio","duet","solo","chorus","verse","bridge","intro",
+  "outro","crescendo","fortissimo","pianissimo","staccato","legato",
+  "arpeggio","glissando","tremolo","vibrato","falsetto","soprano",
+  "alto","tenor","baritone","bass","counter-tenor","countertenor",
+  "mezzo-soprano","alto-vox","treble","clef","staff","note","rest",
+  "measure","bar-line","key-signature","time-signature","ledger-line",
+  "accidental","sharps","flats","naturals","whole-note","half-note",
+  "quarter-note","eighth-note","sixteenth","dotted-note","tie","slur",
+  "beam","flag","grace-note","mordent","trill","turn","fermata",
+  "coda","segno","dal-coda","repeat","fine","al-ritorno","ritardando",
+  "accelerando","allargando","largo","adagio","andante","moderato",
+  "allegro","vivace","presto","prestissimo","tempo","rubato",
+  "polyphony","counterpoint","homophony","monophony","dissonance",
+  "consonance","harmony","melody","rhythm","cadence","resolution",
+  "modulation","transposition","arrangement","composition","improvisation",
+  "jazz","blues","rock","pop","classical","opera","ballet","folk",
+  "country","reggae","soul","funk","disco","techno","house","trance",
+  "ambient","drum-and-bass","dubstep","trap","hip-hop","rap","grime",
+  "ska","punk","metal","goth","indie","alt","emo","shoegaze",
+  "dream-pop","synth-pop","new-wave","post-punk","garage","surf",
+  "twist","salsa","bachata","merengue","cha-cha","rumba","tango",
+  "waltz","foxtrot","tango","swing","jive","rumba","bolero","samba",
+  "flamenco","fandango","jig","reel","hornpipe","tarantella","polka",
+  "mazurka","oberek","krakowiak","czardas","csardas","valaška",
+  "morris","hobby-horse","maypole","morning","dawn","sunrise","dusk",
+  "twilight","twilight","midnight","noon","yesterday","today",
+  "tomorrow","forever","always","never","sometimes","often","seldom",
+  "quickly","slowly","gently","roughly","smoothly","sharply","softly",
+  "loudly","silently","quietly","boldly","fearlessly","courageously",
+  "bravely","timidly","gracefully","awkwardly"," clumsily","nimbly",
+  "agile","swift","fleet","fast","rapid","speedy","hasty","quick",
+  "sluggish","leisurely","relaxed","calm","peaceful","tranquil",
+  "serene","placid","still","motionless","frozen","solid","liquid",
+  "gas","vapor","steam","mist","fog","haze","smog","dust","pollen",
+  "spore","seed","pod","hut","cabin","lodge","cottage","manor",
+  "mansion","palace","fortress","citadel","bunker","dugout","trench",
+  "moat","drawbridge","portcullis","arrow-slit","battlement","parapet",
+  "crenell","machicol","sally-port","postern","gatehouse","wardrobe",
+  "chamber","hallway","corridor","passage","alcove","nook","cranny",
+  "pantry","butler","parlor","atrium","courtyard","garden","orchard",
+  "vineyard","plantation","meadow","pasture","prairie","savanna",
+  "steppe","tundra","taiga","boreal","rainforest","jungle","swamp",
+  "marsh","bog","fen","moor","heath","down","cliff","crag","gorge",
+  "canyon","ravine","valley","hollow","dale","vales","cove","creek",
+  "brook","stream","rivulet","tributary","delta","estuary","inlet",
+  "outlet","peninsula","isthmus","archipelago","atoll","reef","barrier",
+  "seabed","abyss","trench","current","tidal","surge","swell","crest",
+  "whitewater","rapids","cataract","falls","cascade","geyser","spring",
+  "hot-spring","volcanic","fumarole","mud-pot","solfatara","sinter",
+  "travertine","tufa","stalactite","stalagmite","column","pillar",
+  "monolith","obelisk","menhir","dolmen","cromlech","cairn","tumulus",
+  "barrow","kurgan","ziggurat","stele","kiosks","pavilion","rotunda",
+  "dome","cupola","minaret","spire","steeple","nave","aisle","transept",
+  "apse","ambulatory","narthex","crypt","chapel","sanctuary","altar",
+  "font","pew","stall","lectern","pulpit","reredos","reliquary","chalice",
+  "paten","monstrance","ciborium","pyx","candlestick","crucifix","rood",
+  "gargoyle","grotesque","chimera","putto","seraphin","cherubin","angel",
+  "archangel","saint","prophet","disciple","apostle","missionary","monk",
+  "nun","friar","prelate","bishop","cardinal","pope","curate","vicar",
+  "deacon","elder","pastor","imam","rabbi","shaman","oracle","priest",
+  "sacrifice","offering","tithing","alms","charity","generosity","grace",
+  "mercy","pardon","forgive","repent","redeem","salvation","blessing",
+  "curse","hex","ward","charm","amulet","talisman","totem","icon",
+  "sigil","rune","glyph","symbol","emblem","crest","banner","standard",
+  "ensign","jack","pennant"," burgee","streamer","bunting","swag",
+  "festoon","garland","wreath","laurel","bay","olive","palm","ivy",
+  "fern","moss","lichen","fungi","mushroom","toadstool","truffle",
+  "morel","chanterelle","shiitake","enoki","maitake","oyster",
+  "puffball","bolete","porcini","cep","button","cremini","portobello",
+  "champ","shaggy","hen-of-the-woods","lion's mane","artichoke",
+  "asparagus","artichoke","eggplant","zucchini","courgette","squash",
+  "pumpkin","gourd","acorn","chestnut","hazelnut","pecan","macadamia",
+  "cashew","pistachio","Brazil-nut","pine-nut","coconut","date",
+  "fig","olive","raisin","currant","prune","apricot","nectarine",
+  "plum","cherry","damson","greengage","mulberry","elderberry","goji",
+  "açaí","passion","kiwi","starfruit","durian","mangosteen","rambutan",
+  "lychee","longan","dragon-fruit","kumquat","persimmon","pomegranate",
+  "quince","medlar","loquat","tamarind","jackfruit","breadfruit",
+  "plantain","banana","apple","crabapple","hawthorn","rowan","ebony",
+  "mahogany","teak","walnut","cherry-wood","oak","maple","birch",
+  "aspen","willow","poplar","cottonwood","sycamore","chestnut","linden",
+  "elm","ash","hickory","beech","hornbeam","yew","juniper","cedar",
+  "cypress","redwood","sequoia","banyan","baobab","kapok","ironwood",
+  "bamboo","rattan","palm","coconut-palm","date-palm","oil-palm",
+  "betel","areca","sago","cabbage-palm","pandanus","cycad","ginkgo",
+  "fern","horsetail","clubmoss","quillwort","spikemoss","whisk fern"
+];
+
+// ==================== GAME STATE ====================
+const STORAGE_KEY_PREFIX = 'pictionary_';
+let myName = '';
+let roomName = '';
+let isDrawer = false;
+let wordToDraw = '';
+let wordDisplay = '';
+let timeLimit = 90;
+let timeRemaining = 90;
+let timerInterval = null;
+let myScore = 0;
+let allScores = {};
+let isDrawing = false;
+let lastX = 0, lastY = 0;
+let currentColor = '#000000';
+let brushSize = 5;
+let isEraser = false;
+let roundActive = false;
+let canvas, ctx, drawLayer, drawCtx;
+const CANVAS_W = 580, CANVAS_H = 400;
+
+// ==================== SETUP ====================
+document.getElementById('join-btn').addEventListener('click', joinRoom);
+document.getElementById('player-name-input').addEventListener('keydown', e => { if(e.key==='Enter') joinRoom(); });
+document.getElementById('room-name-input').addEventListener('keydown', e => { if(e.key==='Enter') joinRoom(); });
+
+function joinRoom() {
+  myName = document.getElementById('player-name-input').value.trim();
+  roomName = document.getElementById('room-name-input').value.trim();
+  timeLimit = parseInt(document.getElementById('time-select').value);
+  if (!myName || !roomName) {
+    alert('Please enter your name and a room name.');
+    return;
+  }
+  localStorage.setItem(STORAGE_KEY_PREFIX + roomName + '_player', myName);
+  localStorage.setItem(STORAGE_KEY_PREFIX + roomName + '_time', timeLimit);
+
+  document.getElementById('setup-panel').classList.add('hidden');
+  document.getElementById('game-ui').classList.remove('hidden');
+  document.getElementById('display-name').textContent = myName;
+
+  initCanvas();
+  initGame();
+}
+
+// ==================== CANVAS ====================
+function initCanvas() {
+  canvas = document.getElementById('canvas');
+  ctx = canvas.getContext('2d');
+  drawLayer = document.getElementById('draw-layer');
+  drawCtx = drawLayer.getContext('2d');
+
+  // Responsive sizing
+  const container = document.getElementById('canvas-container');
+  const maxWidth = Math.min(580, window.innerWidth - 40);
+  const scale = maxWidth / CANVAS_W;
+  canvas.width = maxWidth;
+  canvas.height = Math.round(CANVAS_H * scale);
+  drawLayer.width = canvas.width;
+  drawLayer.height = canvas.height;
+  ctx.scale(scale, scale);
+  drawCtx.scale(scale, scale);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // Mouse events
+  canvas.addEventListener('mousedown', startDraw);
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('mouseup', endDraw);
+  canvas.addEventListener('mouseleave', endDraw);
+
+  // Touch events
+  canvas.addEventListener('touchstart', e => { e.preventDefault(); startDraw(touchToMouse(e)); });
+  canvas.addEventListener('touchmove', e => { e.preventDefault(); draw(touchToMouse(e)); });
+  canvas.addEventListener('touchend', e => { e.preventDefault(); endDraw(touchToMouse(e)); });
+
+  // Tools
+  document.querySelectorAll('.color-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentColor = btn.dataset.color;
+      isEraser = false;
+      document.getElementById('eraser-btn').classList.remove('active');
+    });
+  });
+
+  document.getElementById('brush-size').addEventListener('input', e => {
+    brushSize = parseInt(e.target.value);
+    document.getElementById('brush-val').textContent = brushSize;
+  });
+
+  document.getElementById('eraser-btn').addEventListener('click', () => {
+    isEraser = !isEraser;
+    document.getElementById('eraser-btn').classList.toggle('active');
+    if (isEraser) {
+      document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+    }
+  });
+
+  document.getElementById('clear-btn').addEventListener('click', clearCanvas);
+}
+
+function touchToMouse(e) {
+  const rect = canvas.getBoundingClientRect();
+  const touch = e.touches[0] || e.changedTouches[0];
+  return {
+    offsetX: touch.clientX - rect.left,
+    offsetY: touch.clientY - rect.top
+  };
+}
+
+function startDraw(e) {
+  if (!isDrawer || !roundActive) return;
+  isDrawing = true;
+  lastX = e.offsetX;
+  lastY = e.offsetY;
+}
+
+function draw(e) {
+  if (!isDrawing || !isDrawer) return;
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  ctx.lineTo(e.offsetX, e.offsetY);
+  ctx.strokeStyle = isEraser ? '#ffffff' : currentColor;
+  ctx.lineWidth = isEraser ? brushSize * 3 : brushSize;
+  ctx.stroke();
+  lastX = e.offsetX;
+  lastY = e.offsetY;
+  broadcastCanvas();
+}
+
+function endDraw(e) {
+  isDrawing = false;
+}
+
+function clearCanvas() {
+  if (!isDrawer) return;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  broadcastCanvas();
+}
+
+// ==================== LOCALSTORAGE COMM ====================
+function broadcastCanvas() {
+  const data = drawCtx.getImageData(0, 0, drawLayer.width, drawLayer.height);
+  localStorage.setItem(
+    STORAGE_KEY_PREFIX + roomName + '_canvas',
+    JSON.stringify({data: Array.from(data.data)})
+  );
+}
+
+function broadcastGuess(guesserName, guess, correct) {
+  const msg = {
+    type: 'guess',
+    room: roomName,
+    guesser: guesserName,
+    guess: guess,
+    correct: correct,
+    ts: Date.now()
+  };
+  localStorage.setItem(STORAGE_KEY_PREFIX + roomName + '_msg', JSON.stringify(msg));
+}
+
+function broadcastRoundEnd(winner, scores) {
+  const msg = {
+    type: 'round-end',
+    room: roomName,
+    winner: winner,
+    scores: scores,
+    ts: Date.now()
+  };
+  localStorage.setItem(STORAGE_KEY_PREFIX + roomName + '_msg', JSON.stringify(msg));
+}
+
+function broadcastState() {
+  const state = {
+    type: 'state',
+    room: roomName,
+    playerName: myName,
+    isDrawer: isDrawer,
+    word: wordDisplay,
+    timeLeft: timeRemaining,
+    score: myScore,
+    ts: Date.now()
+  };
+  localStorage.setItem(STORAGE_KEY_PREFIX + roomName + '_state', JSON.stringify(state));
+}
+
+// ==================== GAME LOGIC ====================
+function initGame() {
+  // Listen for messages from other tabs
+  window.addEventListener('storage', handleStorageEvent);
+
+  // Listen for player joins/leaves
+  checkPlayers();
+  setInterval(checkPlayers, 2000);
+
+  // Start first round
+  setTimeout(startNewRound, 1000);
+}
+
+function checkPlayers() {
+  // Simple: track via localStorage heartbeats
+  const now = Date.now();
+  localStorage.setItem(STORAGE_KEY_PREFIX + roomName + '_heartbeat', JSON.stringify({
+    name: myName, ts: now
+  }));
+}
+
+function handleStorageEvent(e) {
+  if (!e.key || !e.key.startsWith(STORAGE_KEY_PREFIX + roomName)) return;
+
+  if (e.key === STORAGE_KEY_PREFIX + roomName + '_msg') {
+    try {
+      const msg = JSON.parse(e.newValue);
+      if (msg.type === 'guess') {
+        addGuessEntry(msg.guesser, msg.guess, msg.correct);
+        if (msg.correct && isDrawer) {
+          const points = Math.max(1, Math.floor(timeRemaining / 5));
+          allScores[msg.guesser] = (allScores[msg.guesser] || 0) + points;
+          myScore = (allScores[myName] || 0); // local
+        }
+      } else if (msg.type === 'round-end') {
+        allScores = msg.scores;
+        myScore = allScores[myName] || 0;
+        showRoundOver(msg.winner);
+      }
+    } catch(err) {}
+  }
+
+  if (e.key === STORAGE_KEY_PREFIX + roomName + '_canvas' && !isDrawer) {
+    try {
+      const data = JSON.parse(e.newValue);
+      const imgData = new ImageData(
+        new Uint8ClampedArray(data.data),
+        drawLayer.width, drawLayer.height
+      );
+      drawCtx.putImageData(imgData, 0, 0);
+    } catch(err) {}
+  }
+
+  if (e.key === STORAGE_KEY_PREFIX + roomName + '_state') {
+    try {
+      const state = JSON.parse(e.newValue);
+      // Update UI from other player's state
+      if (state.type === 'state' && state.room === roomName) {
+        // Just track that another player exists
+      }
+    } catch(err) {}
+  }
+}
+
+function startNewRound() {
+  // Pick random word
+  wordToDraw = WORDS[Math.floor(Math.random() * WORDS.length)];
+  wordDisplay = '_ '.repeat(wordToDraw.length).trim();
+
+  // Alternate who draws
+  const playerCount = getActivePlayerCount();
+  const drawIndex = Math.floor(Math.random() * Math.max(playerCount, 1));
+  isDrawer = (playerCount <= 1) || (drawIndex === 0);
+
+  roundActive = true;
+  timeRemaining = timeLimit;
+  myScore = allScores[myName] || 0;
+
+  // Clear canvas for new round
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  drawCtx.clearRect(0, 0, drawLayer.width, drawLayer.height);
+
+  updateUI();
+  broadcastState();
+
+  // Start timer
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    timeRemaining--;
+    updateTimer();
+    if (timeRemaining <= 0) {
+      endRound();
+    }
+    broadcastState();
+  }, 1000);
+}
+
+function getActivePlayerCount() {
+  const hbKey = STORAGE_KEY_PREFIX + roomName + '_heartbeat';
+  const hbStr = localStorage.getItem(hbKey);
+  if (!hbStr) return 1;
+  // Count heartbeats in last 10 seconds
+  const now = Date.now();
+  let count = 0;
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith(hbKey.replace('_heartbeat', ''))) {
+      try {
+        const data = JSON.parse(localStorage.getItem(key));
+        if (data && data.ts && (now - data.ts) < 10000 && data.name !== myName) {
+          count++;
+        }
+      } catch(e) {}
+    }
+  }
+  return count + 1;
+}
+
+function endRound() {
+  roundActive = false;
+  clearInterval(timerInterval);
+
+  // Determine winner
+  let maxScore = 0;
+  let winner = null;
+  for (const [name, score] of Object.entries(allScores)) {
+    if (score > maxScore) {
+      maxScore = score;
+      winner = name;
+    }
+  }
+
+  broadcastRoundEnd(winner, allScores);
+  showRoundOver(winner);
+}
+
+function showRoundOver(winner) {
+  const overlay = document.getElementById('round-over-overlay');
+  overlay.classList.remove('hidden');
+
+  document.getElementById('round-over-title').textContent = roundActive ? 'Time\'s Up!' : 'Round Over!';
+  if (winner) {
+    document.getElementById('round-over-winner').textContent = `🏆 ${winner} wins!`;
+  } else {
+    document.getElementById('round-over-winner').textContent = `No one guessed correctly!`;
+  }
+
+  const points = [];
+  for (const [name, score] of Object.entries(allScores)) {
+    points.push(`${name}: ${score} pts`);
+  }
+  document.getElementById('round-over-points').textContent = points.join(' | ');
+}
+
+// ==================== UI UPDATES ====================
+function updateUI() {
+  const roleEl = document.getElementById('role-display');
+  if (isDrawer) {
+    roleEl.textContent = '🎨 DRAWING';
+    roleEl.className = 'role drawing';
+    document.getElementById('word-display').textContent = wordToDraw.toUpperCase();
+    document.getElementById('guess-input').disabled = true;
+    document.getElementById('guess-btn').disabled = true;
+    document.getElementById('guess-area').style.opacity = '0.3';
+  } else {
+    roleEl.textContent = '👀 GUESSING';
+    roleEl.className = 'role guessing';
+    document.getElementById('word-display').textContent = '???';
+    document.getElementById('guess-input').disabled = false;
+    document.getElementById('guess-btn').disabled = false;
+    document.getElementById('guess-area').style.opacity = '1';
+  }
+  document.getElementById('score-display').textContent = `Score: ${allScores[myName] || 0}`;
+}
+
+function updateTimer() {
+  const mins = Math.floor(timeRemaining / 60);
+  const secs = timeRemaining % 60;
+  const timerEl = document.getElementById('timer');
+  timerEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+  timerEl.className = timeRemaining <= 10 ? 'warning' : '';
+}
+
+function addGuessEntry(guesser, guess, correct) {
+  const log = document.getElementById('guess-log');
+  const entry = document.createElement('div');
+  entry.className = 'guess-entry ' + (correct ? 'correct' : 'wrong');
+  if (guesser === myName) {
+    entry.textContent = correct ? `✅ You guessed: ${guess}!` : `❌ Your guess "${guess}" was wrong.`;
+  } else {
+    entry.textContent = correct ? `✅ ${guesser} guessed: ${guess}!` : `${guesser}: "${guess}"`;
+  }
+  log.insertBefore(entry, log.firstChild);
+
+  if (log.children.length > 50) {
+    log.removeChild(log.lastChild);
+  }
+}
+
+// ==================== GUESS HANDLER ====================
+document.getElementById('guess-btn').addEventListener('click', submitGuess);
+document.getElementById('guess-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitGuess();
+});
+
+function submitGuess() {
+  const input = document.getElementById('guess-input');
+  const guess = input.value.trim().toLowerCase();
+  if (!guess) return;
+
+  if (guess === wordToDraw.toLowerCase()) {
+    addGuessEntry(myName, guess, true);
+    const points = Math.max(1, Math.floor(timeRemaining / 5));
+    allScores[myName] = (allScores[myName] || 0) + points;
+    myScore = allScores[myName];
+    broadcastGuess(myName, guess, true);
+    document.getElementById('score-display').textContent = `Score: ${myScore}`;
+    input.value = '';
+    // Add correct word reveal
+    const log = document.getElementById('guess-log');
+    const reveal = document.createElement('div');
+    reveal.className = 'guess-entry system';
+    reveal.textContent = `🎉 The word was "${wordToDraw.toUpperCase()}"!`;
+    log.insertBefore(reveal, log.firstChild);
+  } else {
+    addGuessEntry(myName, guess, false);
+    broadcastGuess(myName, guess, false);
+    input.value = '';
+  }
+}
+
+// Prevent round over from blocking next round
+document.getElementById('next-btn').addEventListener('click', () => {
+  document.getElementById('round-over-overlay').classList.add('hidden');
+  startNewRound();
+});
+</script>
+</body>
+</html>
