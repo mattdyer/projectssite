@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather Map</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #0a0e27;
+  color: #e0e0e0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+}
+h1 {
+  font-size: 1.6rem;
+  margin-bottom: 0.5rem;
+  color: #7ecfff;
+  text-align: center;
+}
+.subtitle {
+  color: #888;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+.search-box {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  width: 100%;
+  max-width: 400px;
+}
+.search-box input {
+  flex: 1;
+  padding: 0.7rem 1rem;
+  border: 1px solid #2a2a4e;
+  border-radius: 8px;
+  background: #141833;
+  color: #e0e0e0;
+  font-size: 1rem;
+  outline: none;
+}
+.search-box input:focus { border-color: #7ecfff; }
+.search-box button {
+  padding: 0.7rem 1.2rem;
+  border: none;
+  border-radius: 8px;
+  background: #7ecfff;
+  color: #0a0e27;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.search-box button:hover { background: #5bb8ff; }
+#map-container {
+  position: relative;
+  width: 100%;
+  max-width: 700px;
+  aspect-ratio: 16 / 9;
+  background: #0d1229;
+  border: 1px solid #2a2a4e;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.location-label {
+  position: absolute;
+  background: rgba(10, 14, 39, 0.85);
+  border: 1px solid #7ecfff;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  pointer-events: none;
+  white-space: nowrap;
+  transform: translate(-50%, -120%);
+}
+.location-label .city { color: #fff; font-weight: 600; font-size: 0.95rem; }
+.location-label .temp { color: #7ecfff; margin-top: 2px; }
+.location-label .desc { color: #aaa; font-size: 0.8rem; margin-top: 1px; }
+.pin-dot {
+  position: absolute;
+  width: 16px; height: 16px;
+  background: #ff6b6b;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 2;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,107,107,0.6); }
+  50% { box-shadow: 0 0 0 8px rgba(255,107,107,0); }
+}
+.info-panel {
+  width: 100%;
+  max-width: 700px;
+  background: #141833;
+  border: 1px solid #2a2a4e;
+  border-radius: 12px;
+  padding: 1rem;
+  display: none;
+}
+.info-panel.visible { display: block; }
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+.info-item {
+  background: #0d1229;
+  border-radius: 8px;
+  padding: 0.75rem;
+  text-align: center;
+}
+.info-item .label { color: #888; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
+.info-item .value { color: #fff; font-size: 1.3rem; font-weight: 700; margin-top: 0.25rem; }
+.loading {
+  color: #7ecfff;
+  font-size: 1.1rem;
+  margin: 2rem 0;
+}
+.error {
+  color: #ff6b6b;
+  font-size: 0.95rem;
+  margin: 1rem 0;
+  text-align: center;
+}
+.hint {
+  color: #666;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+<h1>🌍 Weather Map</h1>
+<p class="subtitle">Search any city to see weather on a visual map</p>
+<div class="search-box">
+  <input type="text" id="cityInput" placeholder="Enter a city name…" autocomplete="off">
+  <button id="searchBtn">Search</button>
+</div>
+<p class="hint">Uses the free Open-Meteo API — no sign-up needed</p>
+<div id="map-container">
+  <canvas id="mapCanvas"></canvas>
+</div>
+<div class="info-panel" id="infoPanel">
+  <h3 id="infoCity" style="color:#fff;"></h3>
+  <div class="info-grid">
+    <div class="info-item"><div class="label">Temperature</div><div class="value" id="infoTemp"></div></div>
+    <div class="info-item"><div class="label">Feels Like</div><div class="value" id="infoFeels"></div></div>
+    <div class="info-item"><div class="label">Condition</div><div class="value" id="infoCond"></div></div>
+    <div class="info-item"><div class="label">Wind</div><div class="value" id="infoWind"></div></div>
+    <div class="info-item"><div class="label">Humidity</div><div class="value" id="infoHumid"></div></div>
+    <div class="info-item"><div class="label">UV Index</div><div class="value" id="infoUV"></div></div>
+  </div>
+</div>
+<p class="loading" id="loading" style="display:none;">Searching for weather data…</p>
+<p class="error" id="errorMsg" style="display:none;"></p>
+
+<script>
+const canvas = document.getElementById('mapCanvas');
+const ctx = canvas.getContext('2d');
+const cityInput = document.getElementById('cityInput');
+const searchBtn = document.getElementById('searchBtn');
+const mapContainer = document.getElementById('map-container');
+const infoPanel = document.getElementById('infoPanel');
+const loadingEl = document.getElementById('loading');
+const errorEl = document.getElementById('errorMsg');
+
+let currentPin = null;
+
+function resizeCanvas() {
+  canvas.width = mapContainer.clientWidth * (window.devicePixelRatio || 1);
+  canvas.height = mapContainer.clientHeight * (window.devicePixelRatio || 1);
+  ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+  drawMap();
+}
+window.addEventListener('resize', resizeCanvas);
+
+// Simplified world map: continents drawn with rough polygon outlines
+const continents = [
+  // North America
+  [[0.08,0.15],[0.12,0.12],[0.18,0.14],[0.22,0.18],[0.26,0.22],[0.28,0.28],[0.26,0.34],[0.22,0.38],[0.18,0.42],[0.15,0.44],[0.14,0.40],[0.12,0.36],[0.10,0.30],[0.07,0.22]],
+  // South America
+  [[0.20,0.46],[0.24,0.44],[0.27,0.46],[0.29,0.52],[0.30,0.60],[0.29,0.68],[0.26,0.74],[0.23,0.78],[0.21,0.74],[0.20,0.66],[0.19,0.58],[0.19,0.50]],
+  // Europe
+  [[0.44,0.14],[0.48,0.12],[0.52,0.14],[0.54,0.18],[0.52,0.22],[0.50,0.26],[0.48,0.30],[0.46,0.32],[0.44,0.30],[0.42,0.26],[0.43,0.20]],
+  // Africa
+  [[0.44,0.34],[0.48,0.32],[0.52,0.34],[0.56,0.40],[0.57,0.48],[0.56,0.56],[0.54,0.62],[0.50,0.68],[0.47,0.66],[0.44,0.58],[0.43,0.50],[0.42,0.42],[0.43,0.36]],
+  // Asia
+  [[0.54,0.12],[0.60,0.10],[0.68,0.12],[0.76,0.16],[0.80,0.22],[0.82,0.30],[0.80,0.36],[0.76,0.40],[0.72,0.44],[0.68,0.46],[0.64,0.44],[0.60,0.40],[0.56,0.36],[0.54,0.30],[0.53,0.22],[0.54,0.16]],
+  // Australia
+  [[0.78,0.56],[0.84,0.54],[0.88,0.56],[0.90,0.62],[0.88,0.68],[0.84,0.70],[0.80,0.68],[0.77,0.62]],
+  // Greenland
+  [[0.28,0.08],[0.33,0.06],[0.36,0.10],[0.35,0.16],[0.32,0.18],[0.28,0.16]],
+];
+
+function drawMap() {
+  const w = mapContainer.clientWidth;
+  const h = mapContainer.clientHeight;
+  ctx.clearRect(0, 0, w, h);
+
+  // Ocean gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, '#0c1445');
+  grad.addColorStop(0.5, '#0f1d56');
+  grad.addColorStop(1, '#0c1445');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(126,207,255,0.06)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 12; i++) {
+    const y = (i / 12) * h;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+  for (let i = 0; i <= 24; i++) {
+    const x = (i / 24) * w;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+  }
+
+  // Continents
+  continents.forEach(cont => {
+    ctx.beginPath();
+    cont.forEach((p, i) => {
+      const x = p[0] * w, y = p[1] * h;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = '#1a3a2a';
+    ctx.fill();
+    ctx.strokeStyle = '#2a5a3a';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  });
+
+  // Equator line
+  ctx.strokeStyle = 'rgba(126,207,255,0.15)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(0, h * 0.5); ctx.lineTo(w, h * 0.5); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function tempToColor(temp) {
+  // Blue -> Cyan -> Green -> Yellow -> Orange -> Red
+  const t = Math.max(-30, Math.min(50, temp));
+  const norm = (t + 30) / 80; // 0..1
+  if (norm < 0.25) {
+    return `rgb(${Math.floor(norm*4*255)},${Math.floor(255*(1-norm*2))},255)`;
+  } else if (norm < 0.5) {
+    const n = (norm - 0.25) * 2;
+    return `rgb(255,${Math.floor(255*(1-n))},0)`;
+  } else if (norm < 0.75) {
+    const n = (norm - 0.5) * 2;
+    return `rgb(255,${Math.floor(255*n)},${Math.floor(50*(1-n))})`;
+  } else {
+    const n = (norm - 0.75) * 4;
+    return `rgb(255,${Math.floor(255*(1-n*0.5))},${Math.floor(n*100)})`;
+  }
+}
+
+function wmoCodeToDesc(code) {
+  const codes = {
+    0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',
+    45:'Foggy',48:'Icy fog',51:'Light drizzle',53:'Drizzle',55:'Dense drizzle',
+    61:'Light rain',63:'Rain',65:'Heavy rain',
+    71:'Light snow',73:'Snow',75:'Heavy snow',
+    80:'Light showers',81:'Showers',82:'Heavy showers',
+    95:'Thunderstorm',96:'Thunderstorm w/ hail',99:'Severe thunderstorm'
+  };
+  return codes[code] || 'Unknown';
+}
+
+function wmoToEmoji(code) {
+  if (code === 0) return '☀️';
+  if (code <= 2) return '⛅';
+  if (code <= 3) return '☁️';
+  if (code <= 48) return '🌫️';
+  if (code <= 57) return '🌧️';
+  if (code <= 67) return '🌧️';
+  if (code <= 77) return '❄️';
+  if (code <= 82) return '🌦️';
+  if (code <= 99) return '⛈️';
+  return '🌍';
+}
+
+function removePin() {
+  if (currentPin) { currentPin.remove(); currentPin = null; }
+  // Remove label
+  const label = mapContainer.querySelector('.location-label');
+  if (label) label.remove();
+}
+
+function placePin(lat, lon, w, h) {
+  removePin();
+  // Simple equirectangular projection
+  const x = ((lon + 180) / 360) * w;
+  const y = ((90 - lat) / 180) * h;
+  if (x < 0 || x > w || y < 0 || y > h) return;
+
+  // Pin dot
+  const dot = document.createElement('div');
+  dot.className = 'pin-dot';
+  dot.style.left = x + 'px';
+  dot.style.top = y + 'px';
+  mapContainer.appendChild(dot);
+  currentPin = dot;
+
+  // Color the pin based on temperature
+  // We'll update the color after we have temp data
+  setTimeout(() => {
+    dot.style.background = '#ff6b6b';
+  }, 0);
+
+  return { x, y };
+}
+
+async function geocodeCity(query) {
+  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!data.results || data.results.length === 0) throw new Error('City not found');
+  const r = data.results[0];
+  return { lat: r.latitude, lon: r.longitude, name: r.name, country: r.country || '' };
+}
+
+async function fetchWeather(lat, lon) {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,uv_index&temperature_unit=celsius&wind_speed_unit=kmh`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to fetch weather');
+  return res.json();
+}
+
+async function searchWeather() {
+  const city = cityInput.value.trim();
+  if (!city) return;
+  errorEl.style.display = 'none';
+  infoPanel.classList.remove('visible');
+  removePin();
+  loadingEl.style.display = 'block';
+
+  try {
+    const loc = await geocodeCity(city);
+    const data = await fetchWeather(loc.lat, loc.lon);
+    loadingEl.style.display = 'none';
+    const c = data.current;
+
+    const temp = Math.round(c.temperature_2m);
+    const feels = Math.round(c.apparent_temperature);
+    const desc = wmoCodeToDesc(c.weather_code);
+    const emoji = wmoToEmoji(c.weather_code);
+    const wind = Math.round(c.wind_speed_10m);
+    const humid = c.relative_humidity_2m;
+    const uv = c.uv_index !== undefined ? c.uv_index.toFixed(1) : '—';
+
+    const w = mapContainer.clientWidth;
+    const h = mapContainer.clientHeight;
+    const pos = placePin(loc.lat, loc.lon, w, h);
+
+    if (pos) {
+      // Update pin color based on temp
+      if (currentPin) {
+        currentPin.style.background = tempToColor(temp);
+        currentPin.style.width = '22px';
+        currentPin.style.height = '22px';
+      }
+
+      // Label
+      const label = document.createElement('div');
+      label.className = 'location-label';
+      label.style.left = pos.x + 'px';
+      label.style.top = (pos.y - 10) + 'px';
+      label.innerHTML = `<div class="city">${loc.name}${loc.country ? ', ' + loc.country : ''}</div><div class="temp">${emoji} ${temp}°C</div><div class="desc">${desc}</div>`;
+      mapContainer.appendChild(label);
+    }
+
+    // Info panel
+    document.getElementById('infoCity').textContent = `${loc.name}${loc.country ? ', ' + loc.country : ''} — ${emoji} ${desc}`;
+    document.getElementById('infoTemp').textContent = `${temp}°C`;
+    document.getElementById('infoTemp').style.color = tempToColor(temp);
+    document.getElementById('infoFeels').textContent = `${feels}°C`;
+    document.getElementById('infoCond').textContent = desc;
+    document.getElementById('infoWind').textContent = `${wind} km/h`;
+    document.getElementById('infoHumid').textContent = `${humid}%`;
+    document.getElementById('infoUV').textContent = uv;
+    infoPanel.classList.add('visible');
+
+  } catch (e) {
+    loadingEl.style.display = 'none';
+    errorEl.textContent = e.message || 'An error occurred';
+    errorEl.style.display = 'block';
+  }
+}
+
+searchBtn.addEventListener('click', searchWeather);
+cityInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') searchWeather(); });
+
+resizeCanvas();
+cityInput.focus();
+</script>
+</body>
+</html>

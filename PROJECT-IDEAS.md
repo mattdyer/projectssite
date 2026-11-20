@@ -71,7 +71,7 @@ Browser-only games and interactive apps. Each completed project gets its own sub
 - [x] **Projectile Motion** — Launch a projectile, adjust angle and velocity, watch the arc.
 - [x] **Math Function Grapher** — Type a formula like `sin(x)*x`, see the graph.
 - [x] **Periodic Table Explorer** — Click elements to see properties.
-- [ ] **Weather Map** — Plot current weather data on a simple map.
+- [x] **Weather Map** — Plot current weather data on a simple map.
 
 ## Multiplayer / Network
 
