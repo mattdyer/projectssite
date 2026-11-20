@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat Room</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f0f1a;
+    color: #e0e0e0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .header {
+    background: #1a1a2e;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-bottom: 1px solid #2a2a3e;
+    flex-shrink: 0;
+  }
+  .header h1 {
+    font-size: 1.1rem;
+    color: #7ecfff;
+    flex: 1;
+  }
+  .username-input {
+    background: #0f0f1a;
+    border: 1px solid #2a2a3e;
+    border-radius: 8px;
+    color: #e0e0e0;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    width: 160px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .username-input:focus { border-color: #7ecfff; }
+  .chat-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .message {
+    max-width: 80%;
+    padding: 0.6rem 0.9rem;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    word-wrap: break-word;
+    animation: fadeIn 0.2s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+  .message.mine {
+    align-self: flex-end;
+    background: #2a2a5e;
+    border-bottom-right-radius: 4px;
+    color: #ffffff;
+  }
+  .message.other {
+    align-self: flex-start;
+    background: #1a1a2e;
+    border: 1px solid #2a2a3e;
+    border-bottom-left-radius: 4px;
+    color: #c0c0d0;
+  }
+  .message .sender {
+    font-size: 0.75rem;
+    color: #7ecfff;
+    margin-bottom: 0.2rem;
+    font-weight: 600;
+  }
+  .message.system {
+    align-self: center;
+    background: transparent;
+    border: none;
+    color: #666;
+    font-size: 0.8rem;
+    font-style: italic;
+  }
+  .input-area {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #2a2a3e;
+    background: #1a1a2e;
+    flex-shrink: 0;
+  }
+  .msg-input {
+    flex: 1;
+    background: #0f0f1a;
+    border: 1px solid #2a2a3e;
+    border-radius: 20px;
+    color: #e0e0e0;
+    padding: 0.7rem 1rem;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .msg-input:focus { border-color: #7ecfff; }
+  .send-btn {
+    background: #7ecfff;
+    color: #0f0f1a;
+    border: none;
+    border-radius: 20px;
+    padding: 0.7rem 1.2rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    white-space: nowrap;
+  }
+  .send-btn:hover { background: #5bb8f5; }
+  .send-btn:active { transform: scale(0.95); }
+  .online-count {
+    font-size: 0.8rem;
+    color: #666;
+  }
+  .emoji-bar {
+    display: flex;
+    gap: 0.3rem;
+    padding: 0.25rem 0;
+    flex-shrink: 0;
+  }
+  .emoji-btn {
+    background: none;
+    border: none;
+    font-size: 1.3rem;
+    cursor: pointer;
+    padding: 0.15rem;
+    border-radius: 6px;
+    transition: background 0.15s;
+  }
+  .emoji-btn:hover { background: #2a2a3e; }
+  @media (max-width: 480px) {
+    .header { padding: 0.5rem 0.75rem; gap: 0.5rem; }
+    .username-input { width: 120px; font-size: 0.85rem; padding: 0.4rem 0.6rem; }
+    .message { max-width: 88%; font-size: 0.9rem; }
+    .msg-input { padding: 0.6rem 0.9rem; font-size: 0.9rem; }
+    .send-btn { padding: 0.6rem 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Chat Room</h1>
+  <span class="online-count" id="onlineCount"></span>
+  <input type="text" class="username-input" id="usernameInput" placeholder="Your name..." maxlength="20" value="">
+</div>
+
+<div class="chat-area" id="chatArea"></div>
+
+<div class="emoji-bar">
+  <button class="emoji-btn" data-emoji="👍">👍</button>
+  <button class="emoji-btn" data-emoji="😂">😂</button>
+  <button class="emoji-btn" data-emoji="❤️">❤️</button>
+  <button class="emoji-btn" data-emoji="🎉">🎉</button>
+  <button class="emoji-btn" data-emoji="🔥">🔥</button>
+  <button class="emoji-btn" data-emoji="👋">👋</button>
+  <button class="emoji-btn" data-emoji="😮">😮</button>
+  <button class="emoji-btn" data-emoji="💯">💯</button>
+</div>
+
+<div class="input-area">
+  <input type="text" class="msg-input" id="msgInput" placeholder="Type a message..." maxlength="500" autocomplete="off">
+  <button class="send-btn" id="sendBtn">Send</button>
+</div>
+
+<script>
+(function() {
+  const STORAGE_KEY = 'chatroom_message_';
+  const HEARTBEAT_KEY = 'chatroom_heartbeat_';
+  const HEARTBEAT_INTERVAL = 2000;
+  const GIVEUP_DELAY = 6000;
+  const MAX_MESSAGES = 100;
+  const CHAT_KEY = 'chatroom_messages';
+
+  const chatArea = document.getElementById('chatArea');
+  const msgInput = document.getElementById('msgInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const usernameInput = document.getElementById('usernameInput');
+  const onlineCountEl = document.getElementById('onlineCount');
+
+  // Load or generate username
+  let username = localStorage.getItem('chatroom_username');
+  if (!username) {
+    const names = ['Alice', 'Bob', 'Charlie', 'Diana', 'Echo', 'Frost', 'Gale', 'Haze', 'Ivy', 'Jade', 'Kai', 'Luna', 'Mira', 'Nova', 'Orion', 'Pip', 'Quinn', 'Rex'];
+    username = names[Math.floor(Math.random() * names.length)] + Math.floor(Math.random() * 100);
+  }
+  usernameInput.value = username;
+
+  function getTimestamp() { return Date.now(); }
+
+  function saveMessage(msg) {
+    let msgs = JSON.parse(localStorage.getItem(CHAT_KEY) || '[]');
+    msgs.push(msg);
+    if (msgs.length > MAX_MESSAGES) msgs = msgs.slice(-MAX_MESSAGES);
+    localStorage.setItem(CHAT_KEY, JSON.stringify(msgs));
+  }
+
+  function addMessageToDOM(msg) {
+    const div = document.createElement('div');
+    if (msg.type === 'system') {
+      div.className = 'message system';
+      div.textContent = msg.text;
+    } else if (msg.type === 'emoji') {
+      div.className = 'message mine';
+      div.textContent = msg.text;
+    } else {
+      div.className = 'message ' + (msg.username === username ? 'mine' : 'other');
+      const sender = document.createElement('div');
+      sender.className = 'sender';
+      sender.textContent = msg.username;
+      div.appendChild(sender);
+      div.appendChild(document.createTextNode(msg.text));
+    }
+    chatArea.appendChild(div);
+    chatArea.scrollTop = chatArea.scrollHeight;
+  }
+
+  function addSystemMessage(text) {
+    addMessageToDOM({ type: 'system', text: text });
+  }
+
+  // Load existing messages
+  function loadMessages() {
+    const msgs = JSON.parse(localStorage.getItem(CHAT_KEY) || '[]');
+    msgs.forEach(addMessageToDOM);
+    chatArea.scrollTop = chatArea.scrollHeight;
+  }
+
+  // Heartbeat: announce presence
+  let heartbeatTimer;
+  function startHeartbeat() {
+    localStorage.setItem(HEARTBEAT_KEY + username, getTimestamp().toString());
+    heartbeatTimer = setInterval(() => {
+      localStorage.setItem(HEARTBEAT_KEY + username, getTimestamp().toString());
+    }, HEARTBEAT_INTERVAL);
+  }
+  function stopHeartbeat() { clearInterval(heartbeatTimer); }
+
+  // Count online users
+  function countOnline() {
+    const now = getTimestamp();
+    let count = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(HEARTBEAT_KEY)) {
+        const lastSeen = parseInt(localStorage.getItem(key), 10);
+        if (now - lastSeen < GIVEUP_DELAY) count++;
+      }
+    }
+    onlineCountEl.textContent = count + ' online';
+  }
+
+  // Cleanup stale heartbeats
+  function cleanupHeartbeats() {
+    const now = getTimestamp();
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(HEARTBEAT_KEY)) {
+        const lastSeen = parseInt(localStorage.getItem(key), 10);
+        if (now - lastSeen > GIVEUP_DELAY) localStorage.removeItem(key);
+      }
+    }
+  }
+
+  // Broadcast
+  function broadcast(type, text) {
+    const msg = {
+      type: type,
+      username: username,
+      text: text,
+      ts: getTimestamp()
+    };
+    saveMessage(msg);
+    addMessageToDOM(msg);
+    localStorage.setItem(CHAT_KEY, JSON.stringify(JSON.parse(localStorage.getItem(CHAT_KEY) || '[]')));
+  }
+
+  // Listen for messages from other tabs
+  window.addEventListener('storage', function(e) {
+    if (e.key === CHAT_KEY && e.newValue) {
+      const msgs = JSON.parse(e.newValue);
+      const last = msgs[msgs.length - 1];
+      if (last && last.ts > getTimestamp() - 3000 && last.username !== username) {
+        addMessageToDOM(last);
+      }
+    }
+    if (e.key && e.key.startsWith(HEARTBEAT_KEY)) {
+      cleanupHeartbeats();
+      countOnline();
+    }
+  });
+
+  // Send message
+  function sendMessage(text) {
+    text = text.trim();
+    if (!text) return;
+    broadcast('text', text);
+    msgInput.value = '';
+  }
+
+  sendBtn.addEventListener('click', () => sendMessage(msgInput.value));
+  msgInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMessage(msgInput.value); });
+
+  // Emoji buttons
+  document.querySelectorAll('.emoji-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      broadcast('emoji', btn.dataset.emoji);
+    });
+  });
+
+  // Username change
+  let oldUsername = username;
+  usernameInput.addEventListener('change', () => {
+    const newName = usernameInput.value.trim();
+    if (newName && newName !== oldUsername) {
+      localStorage.removeItem(HEARTBEAT_KEY + oldUsername);
+      oldUsername = username;
+      username = newName;
+      localStorage.setItem('chatroom_username', username);
+      addSystemMessage(oldUsername + ' renamed to ' + username);
+      startHeartbeat();
+    }
+  });
+
+  // Init
+  loadMessages();
+  broadcast('system', '👋 joined the room');
+  startHeartbeat();
+  countOnline();
+  setInterval(() => { cleanupHeartbeats(); countOnline(); }, 3000);
+
+  msgInput.focus();
+})();
+</script>
+</body>
+</html>
