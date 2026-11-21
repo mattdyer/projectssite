@@ -15,7 +15,7 @@
   #hud { display: flex; gap: 30px; margin-bottom: 8px; font-size: 1rem; }
   #hud span { color: #0f3460; background: #eee; padding: 2px 12px; border-radius: 4px; font-weight: bold; }
   #gameCanvas {
-    border: 2px solid #e94560; border-radius: 4px; cursor: none;
+    border: 2px solid #e94560; border-radius: 4px;
     background: #16213e;
   }
   #overlay {
@@ -81,9 +81,9 @@ const livesLabel = document.getElementById('livesLabel');
 const finalScore = document.getElementById('finalScore');
 
 // Game state
-let score, level, lives, gameOver;
+let score, level, lives, gameOver, running;
 let paddle, ball, bricks, particles;
-let animId, running;
+let animId;
 
 const PADDLE_W = 120, PADDLE_H = 14, PADDLE_Y = H - 30;
 const PADDLE_SPEED = 6;
@@ -263,8 +263,8 @@ function draw() {
     }
   });
 
-  ctx.fillStyle = '#e94560';
-  ctx.shadowColor = '#e94560';
+  ctx.fillStyle = '#00d9ff';
+  ctx.shadowColor = '#00d9ff';
   ctx.shadowBlur = 10;
   ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
   ctx.shadowBlur = 0;
@@ -281,8 +281,12 @@ function draw() {
 }
 
 function gameLoop() {
-  update();
-  draw();
+  try {
+    update();
+    draw();
+  } catch (e) {
+    console.error('Game loop error:', e);
+  }
   if (!gameOver) animId = requestAnimationFrame(gameLoop);
 }
 
@@ -290,14 +294,12 @@ function showGameOver() {
   cancelAnimationFrame(animId);
   running = false;
   finalScore.textContent = score;
-  startScreen.classList.add('hidden');
   gameOverScreen.classList.remove('hidden');
+  overlay.classList.add('active');
 }
 
 function startGame() {
   initGame();
-  startScreen.classList.add('hidden');
-  gameOverScreen.classList.add('hidden');
   running = true;
   animId = requestAnimationFrame(gameLoop);
 }
@@ -332,18 +334,17 @@ document.addEventListener('keydown', e => {
 canvas.addEventListener('click', () => { if (ball.stuck) launchBall(); });
 canvas.addEventListener('touchstart', () => { if (ball.stuck) launchBall(); });
 
-// Button handlers - key fix: hide parent containers completely
+// Button handlers
 playBtn.addEventListener('click', function(e) {
   e.stopPropagation();
+  overlay.classList.remove('active');
   startScreen.classList.add('hidden');
-  startScreen.style.display = 'none';
   startGame();
 });
 
 playAgainBtn.addEventListener('click', function(e) {
   e.stopPropagation();
   gameOverScreen.classList.add('hidden');
-  gameOverScreen.style.display = 'none';
   startGame();
 });
 
