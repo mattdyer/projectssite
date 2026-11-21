@@ -15,7 +15,7 @@
     user-select: none;
     -webkit-user-select: none;
   }
-  canvas { display: block; }
+  canvas { display: block; width: 100vw; height: 100vh; position: fixed; top: 0; left: 0; }
   #info-panel {
     position: absolute;
     top: 10px;
@@ -564,14 +564,12 @@ canvas.addEventListener('wheel', e => {
   const newZoom = Math.max(0.1, Math.min(10, camZoom * zoomFactor));
 
   // Zoom toward cursor
-  const wx = (dragStartX ? e.clientX : W/2);
-  const wy = (dragStartY ? e.clientY : H/2);
-  const worldX = (wx - W/2) / camZoom + camX;
-  const worldY = (wy - H/2) / camZoom + camY;
+  const worldX = (e.clientX - W / 2) / camZoom + camX;
+  const worldY = (e.clientY - H / 2) / camZoom + camY;
 
   camZoom = newZoom;
-  camX = (wx - W/2) / camZoom - worldX;
-  camY = (wy - H/2) / camZoom - worldY;
+  camX = (e.clientX - W / 2) / camZoom - worldX;
+  camY = (e.clientY - H / 2) / camZoom - worldY;
 }, { passive: false });
 
 // Touch
