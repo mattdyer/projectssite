@@ -357,10 +357,18 @@ function endGame(won) {
   if (won) {
     msg.textContent = '🎉 YOU WIN!';
     msg.className = 'win';
-    // Flag all mines
+    // Flag all mines directly (bypass gameOver guard in toggleFlag)
     for (let y = 0; y < rows; y++)
       for (let x = 0; x < cols; x++)
-        if (board[y][x] === -1 && !flagged[y][x]) toggleFlag(x, y);
+        if (board[y][x] === -1 && !flagged[y][x]) {
+          flagged[y][x] = true;
+          const cell = getCell(x, y);
+          cell.textContent = '🚩';
+          cell.classList.remove('hidden');
+          cell.classList.add('flagged');
+        }
+    document.getElementById('flag-count').textContent = flagged.flat().filter(Boolean).length;
+    updateMineCount();
   } else {
     msg.textContent = '💥 GAME OVER';
     msg.className = 'lose';
