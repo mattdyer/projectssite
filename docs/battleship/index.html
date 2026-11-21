@@ -368,14 +368,14 @@ function placeShip(r, c, drag) {
   if (!canPlace(playerBoard, r, c, size, horizontal)) {
     if (!drag) return; // allow drag-through
   }
-  cells.forEach(cell => {
-    if (canPlace(playerBoard, r, c, size, horizontal) || playerBoard[cell.r][cell.c] === 1) {
+  if (canPlace(playerBoard, r, c, size, horizontal)) {
+    cells.forEach(cell => {
       playerBoard[cell.r][cell.c] = 1;
-    }
-  });
-  playerShips[idx].placed = true;
-  renderPlayerBoard();
-  checkPlacementComplete();
+    });
+    playerShips[idx].placed = true;
+    renderPlayerBoard();
+    checkPlacementComplete();
+  }
 }
 
 function renderPlayerBoard() {
