@@ -424,6 +424,11 @@
     const names = getNames();
     if (names.length === 0) return;
 
+    // Initialize available pool for no-repeat mode
+    if (noRepeatEl.checked && available.length === 0) {
+      available = shuffle([...names]);
+    }
+
     if (singleName) {
       spinNames(() => {
         const availableNames = noRepeatEl.checked ? available : names;
