@@ -83,9 +83,9 @@ const livesLabel = document.getElementById('livesLabel');
 const finalScore = document.getElementById('finalScore');
 
 // Game state
-let score, level, lives, gameOver;
+let score, level, lives, gameOver, running;
 let paddle, ball, bricks, particles;
-let animId, running;
+let animId;
 
 const PADDLE_W = 120, PADDLE_H = 14, PADDLE_Y = H - 30;
 const PADDLE_SPEED = 6;
@@ -296,9 +296,9 @@ function showGameOver() {
   cancelAnimationFrame(animId);
   running = false;
   finalScore.textContent = score;
-  startScreen.classList.add('hidden');
   gameOverScreen.classList.remove('hidden');
   overlay.classList.remove('hidden');
+  overlay.classList.add('active');
 }
 
 function startGame() {
@@ -341,6 +341,30 @@ document.addEventListener('keydown', e => {
   if (e.key === ' ' && ball.stuck) launchBall();
   if (e.key === 'Enter' && !running && !gameOver) startGame();
   if (e.key === 'Enter' && gameOver) startGame();
+});
+
+canvas.addEventListener('click', () => { if (ball.stuck) launchBall(); });
+canvas.addEventListener('touchstart', () => { if (ball.stuck) launchBall(); });
+
+// Button handlers
+playBtn.addEventListener('click', function(e) {
+  e.stopPropagation();
+  overlay.classList.remove('active');
+  startScreen.classList.add('hidden');
+  startGame();
+});
+
+playAgainBtn.addEventListener('click', function(e) {
+  e.stopPropagation();
+  gameOverScreen.classList.add('hidden');
+  startGame();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    if (!startScreen.classList.contains('hidden')) playBtn.click();
+    else if (!gameOverScreen.classList.contains('hidden')) playAgainBtn.click();
+  }
 });
 </script>
 </body>

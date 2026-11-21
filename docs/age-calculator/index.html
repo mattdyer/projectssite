@@ -209,7 +209,7 @@ function getZodiac(month, day) {
   const emojis = ['♑', '♒', '♓', '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐'];
   if (month < 1 || month > 12) return '—';
   const cutoff = day < signs[month - 1][0];
-  const idx = cutoff ? (month - 1 + 12) % 12 : (month - 1) % 12;
+  const idx = cutoff ? (month - 1 + 12) % 12 : month % 12;
   return emojis[idx] + ' ' + names[idx];
 }
 

@@ -663,10 +663,9 @@ function clearCanvas() {
 
 // ==================== LOCALSTORAGE COMM ====================
 function broadcastCanvas() {
-  const data = drawCtx.getImageData(0, 0, drawLayer.width, drawLayer.height);
   localStorage.setItem(
     STORAGE_KEY_PREFIX + roomName + '_canvas',
-    JSON.stringify({data: Array.from(data.data)})
+    canvas.toDataURL('image/png')
   );
 }
 
@@ -677,17 +676,6 @@ function broadcastGuess(guesserName, guess, correct) {
     guesser: guesserName,
     guess: guess,
     correct: correct,
-    ts: Date.now()
-  };
-  localStorage.setItem(STORAGE_KEY_PREFIX + roomName + '_msg', JSON.stringify(msg));
-}
-
-function broadcastRoundEnd(winner, scores) {
-  const msg = {
-    type: 'round-end',
-    room: roomName,
-    winner: winner,
-    scores: scores,
     ts: Date.now()
   };
   localStorage.setItem(STORAGE_KEY_PREFIX + roomName + '_msg', JSON.stringify(msg));
@@ -707,6 +695,31 @@ function broadcastState() {
   localStorage.setItem(STORAGE_KEY_PREFIX + roomName + '_state', JSON.stringify(state));
 }
 
+// ==================== ROUND STATE SYNC ====================
+function broadcastRoundInfo() {
+  const info = {
+    type: 'round-info',
+    room: roomName,
+    word: wordToDraw,
+    isDrawer: isDrawer,
+    ts: Date.now()
+  };
+  localStorage.setItem(STORAGE_KEY_PREFIX + roomName + '_round-info', JSON.stringify(info));
+}
+
+function broadcastRoundEnd(winner, scores) {
+  const msg = {
+    type: 'round-end',
+    room: roomName,
+    winner: winner,
+    scores: scores,
+    ts: Date.now()
+  };
+  localStorage.setItem(STORAGE_KEY_PREFIX + roomName + '_msg', JSON.stringify(msg));
+  // Clear round info so next round starts fresh
+  localStorage.setItem(STORAGE_KEY_PREFIX + roomName + '_round-info', '');
+}
+
 // ==================== GAME LOGIC ====================
 function initGame() {
   // Listen for messages from other tabs
@@ -716,16 +729,45 @@ function initGame() {
   checkPlayers();
   setInterval(checkPlayers, 2000);
 
+  // If there's an existing round in progress, sync to it
+  syncExistingRound();
+
   // Start first round
   setTimeout(startNewRound, 1000);
 }
 
+function syncExistingRound() {
+  // Check if there's an existing round-info
+  const roundInfoStr = localStorage.getItem(STORAGE_KEY_PREFIX + roomName + '_round-info');
+  if (roundInfoStr) {
+    try {
+      const info = JSON.parse(roundInfoStr);
+      if (info && info.type === 'round-info' && info.room === roomName) {
+        wordToDraw = info.word;
+        wordDisplay = '_ '.repeat(info.word.length).trim();
+      }
+    } catch(e) {}
+  }
+
+  // Sync canvas if there's existing canvas data
+  const canvasStr = localStorage.getItem(STORAGE_KEY_PREFIX + roomName + '_canvas');
+  if (canvasStr) {
+    try {
+      const img = new Image();
+      img.onload = function() {
+        ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+        ctx.drawImage(img, 0, 0, CANVAS_W, CANVAS_H);
+      };
+      img.src = canvasStr;
+    } catch(e) {}
+  }
+}
+
 function checkPlayers() {
-  // Simple: track via localStorage heartbeats
+  // Use per-player heartbeat keys so tabs don't overwrite each other
+  const hbKey = STORAGE_KEY_PREFIX + roomName + '_heartbeat_' + myName.replace(/\s+/g, '_');
   const now = Date.now();
-  localStorage.setItem(STORAGE_KEY_PREFIX + roomName + '_heartbeat', JSON.stringify({
-    name: myName, ts: now
-  }));
+  localStorage.setItem(hbKey, JSON.stringify({ name: myName, ts: now }));
 }
 
 function handleStorageEvent(e) {
@@ -751,12 +793,14 @@ function handleStorageEvent(e) {
 
   if (e.key === STORAGE_KEY_PREFIX + roomName + '_canvas' && !isDrawer) {
     try {
-      const data = JSON.parse(e.newValue);
-      const imgData = new ImageData(
-        new Uint8ClampedArray(data.data),
-        drawLayer.width, drawLayer.height
-      );
-      drawCtx.putImageData(imgData, 0, 0);
+      const dataUrl = e.newValue;
+      if (!dataUrl) return;
+      const img = new Image();
+      img.onload = function() {
+        ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+        ctx.drawImage(img, 0, 0, CANVAS_W, CANVAS_H);
+      };
+      img.src = dataUrl;
     } catch(err) {}
   }
 
@@ -766,6 +810,24 @@ function handleStorageEvent(e) {
       // Update UI from other player's state
       if (state.type === 'state' && state.room === roomName) {
         // Just track that another player exists
+      }
+    } catch(err) {}
+  }
+
+  if (e.key === STORAGE_KEY_PREFIX + roomName + '_round-info') {
+    try {
+      const info = JSON.parse(e.newValue);
+      if (info && info.type === 'round-info' && info.room === roomName) {
+        // Only apply if this is NOT the drawer's own tab
+        if (!isDrawer) {
+          wordToDraw = info.word;
+          wordDisplay = '_ '.repeat(info.word.length).trim();
+          // Drawer role is determined per-tab, but the word is now shared
+        }
+      } else if (e.newValue === '' || !info) {
+        // Round ended — clear local word
+        wordToDraw = '';
+        wordDisplay = '';
       }
     } catch(err) {}
   }
@@ -789,6 +851,10 @@ function startNewRound() {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
   drawCtx.clearRect(0, 0, drawLayer.width, drawLayer.height);
+  broadcastCanvas();
+
+  // Broadcast round info so other tabs know the word and who is drawing
+  broadcastRoundInfo();
 
   updateUI();
   broadcastState();
@@ -806,15 +872,13 @@ function startNewRound() {
 }
 
 function getActivePlayerCount() {
-  const hbKey = STORAGE_KEY_PREFIX + roomName + '_heartbeat';
-  const hbStr = localStorage.getItem(hbKey);
-  if (!hbStr) return 1;
-  // Count heartbeats in last 10 seconds
+  // Look for all per-player heartbeat keys in this room
   const now = Date.now();
+  const roomPrefix = STORAGE_KEY_PREFIX + roomName + '_heartbeat_';
   let count = 0;
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key && key.startsWith(hbKey.replace('_heartbeat', ''))) {
+    if (key && key.startsWith(roomPrefix)) {
       try {
         const data = JSON.parse(localStorage.getItem(key));
         if (data && data.ts && (now - data.ts) < 10000 && data.name !== myName) {

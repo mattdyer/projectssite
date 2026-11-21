@@ -290,7 +290,24 @@
     } else {
       modeLabelEl.textContent = 'Mode: Pick 1 name';
     }
+    // Refresh the no-repeat pool whenever mode changes
+    if (noRepeatEl.checked) {
+      const names = getNames();
+      if (names.length > 0) {
+        available = shuffle([...names]);
+      }
+    }
   }
+
+  // Refresh available pool when name list changes and no-repeat is active
+  namesEl.addEventListener('input', () => {
+    if (noRepeatEl.checked) {
+      const names = getNames();
+      if (names.length > 0) {
+        available = shuffle([...names]);
+      }
+    }
+  });
 
   function shuffle(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
