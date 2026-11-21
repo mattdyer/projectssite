@@ -15,14 +15,16 @@
   #hud { display: flex; gap: 30px; margin-bottom: 8px; font-size: 1rem; }
   #hud span { color: #0f3460; background: #eee; padding: 2px 12px; border-radius: 4px; font-weight: bold; }
   #gameCanvas {
-    border: 2px solid #e94560; border-radius: 4px; cursor: none;
+    border: 2px solid #e94560; border-radius: 4px;
     background: #16213e;
   }
   #overlay {
     position: absolute; display: flex; flex-direction: column; align-items: center;
     justify-content: center; pointer-events: none; z-index: 10;
   }
-  #overlay.active { pointer-events: auto; }
+  #overlay.hidden {
+    display: none;
+  }
   #startScreen, #gameOverScreen {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     background: rgba(26, 26, 46, 0.92); padding: 40px 50px; border-radius: 12px;
@@ -51,7 +53,7 @@
 </div>
 <canvas id="gameCanvas" width="800" height="500"></canvas>
 
-<div id="overlay" class="active">
+<div id="overlay">
   <div id="startScreen">
     <h2>BREAKOUT</h2>
     <p>Move paddle with mouse, touch, or arrow keys.<br>Break all bricks to advance.</p>
@@ -263,8 +265,8 @@ function draw() {
     }
   });
 
-  ctx.fillStyle = '#e94560';
-  ctx.shadowColor = '#e94560';
+  ctx.fillStyle = '#00d9ff';
+  ctx.shadowColor = '#00d9ff';
   ctx.shadowBlur = 10;
   ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
   ctx.shadowBlur = 0;
@@ -281,8 +283,12 @@ function draw() {
 }
 
 function gameLoop() {
-  update();
-  draw();
+  try {
+    update();
+    draw();
+  } catch (e) {
+    console.error('Game loop error:', e);
+  }
   if (!gameOver) animId = requestAnimationFrame(gameLoop);
 }
 
@@ -292,12 +298,14 @@ function showGameOver() {
   finalScore.textContent = score;
   startScreen.classList.add('hidden');
   gameOverScreen.classList.remove('hidden');
+  overlay.classList.remove('hidden');
 }
 
 function startGame() {
   initGame();
   startScreen.classList.add('hidden');
   gameOverScreen.classList.add('hidden');
+  overlay.classList.add('hidden');
   running = true;
   animId = requestAnimationFrame(gameLoop);
 }
@@ -321,37 +329,18 @@ canvas.addEventListener('touchmove', e => {
   if (ball.stuck) ball.x = paddle.x + paddle.w / 2;
 }, { passive: false });
 
+playBtn.addEventListener('click', () => startGame());
+
+playAgainBtn.addEventListener('click', () => startGame());
+
 document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft' || e.key === 'a') paddle.x -= PADDLE_SPEED;
   if (e.key === 'ArrowRight' || e.key === 'd') paddle.x += PADDLE_SPEED;
   paddle.x = Math.max(0, Math.min(W - paddle.w, paddle.x));
   if (ball.stuck) ball.x = paddle.x + paddle.w / 2;
   if (e.key === ' ' && ball.stuck) launchBall();
-});
-
-canvas.addEventListener('click', () => { if (ball.stuck) launchBall(); });
-canvas.addEventListener('touchstart', () => { if (ball.stuck) launchBall(); });
-
-// Button handlers - key fix: hide parent containers completely
-playBtn.addEventListener('click', function(e) {
-  e.stopPropagation();
-  startScreen.classList.add('hidden');
-  startScreen.style.display = 'none';
-  startGame();
-});
-
-playAgainBtn.addEventListener('click', function(e) {
-  e.stopPropagation();
-  gameOverScreen.classList.add('hidden');
-  gameOverScreen.style.display = 'none';
-  startGame();
-});
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    if (!startScreen.classList.contains('hidden')) playBtn.click();
-    else if (!gameOverScreen.classList.contains('hidden')) playAgainBtn.click();
-  }
+  if (e.key === 'Enter' && !running && !gameOver) startGame();
+  if (e.key === 'Enter' && gameOver) startGame();
 });
 </script>
 </body>
