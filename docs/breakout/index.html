@@ -294,14 +294,12 @@ function showGameOver() {
   cancelAnimationFrame(animId);
   running = false;
   finalScore.textContent = score;
-  startScreen.classList.add('hidden');
   gameOverScreen.classList.remove('hidden');
+  overlay.classList.add('active');
 }
 
 function startGame() {
   initGame();
-  startScreen.classList.add('hidden');
-  gameOverScreen.classList.add('hidden');
   running = true;
   animId = requestAnimationFrame(gameLoop);
 }
@@ -336,27 +334,18 @@ document.addEventListener('keydown', e => {
 canvas.addEventListener('click', () => { if (ball.stuck) launchBall(); });
 canvas.addEventListener('touchstart', () => { if (ball.stuck) launchBall(); });
 
-// Button handlers - key fix: hide parent containers completely
+// Button handlers
 playBtn.addEventListener('click', function(e) {
   e.stopPropagation();
-  try {
-    startScreen.classList.add('hidden');
-    startScreen.style.display = 'none';
-    startGame();
-  } catch (err) {
-    console.error('Play button error:', err);
-  }
+  overlay.classList.remove('active');
+  startScreen.classList.add('hidden');
+  startGame();
 });
 
 playAgainBtn.addEventListener('click', function(e) {
   e.stopPropagation();
-  try {
-    gameOverScreen.classList.add('hidden');
-    gameOverScreen.style.display = 'none';
-    startGame();
-  } catch (err) {
-    console.error('Play Again button error:', err);
-  }
+  gameOverScreen.classList.add('hidden');
+  startGame();
 });
 
 document.addEventListener('keydown', e => {
