@@ -22,7 +22,9 @@
     position: absolute; display: flex; flex-direction: column; align-items: center;
     justify-content: center; pointer-events: none; z-index: 10;
   }
-  #overlay.active { pointer-events: auto; }
+  #overlay.hidden {
+    display: none;
+  }
   #startScreen, #gameOverScreen {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     background: rgba(26, 26, 46, 0.92); padding: 40px 50px; border-radius: 12px;
@@ -51,7 +53,7 @@
 </div>
 <canvas id="gameCanvas" width="800" height="500"></canvas>
 
-<div id="overlay" class="active">
+<div id="overlay">
   <div id="startScreen">
     <h2>BREAKOUT</h2>
     <p>Move paddle with mouse, touch, or arrow keys.<br>Break all bricks to advance.</p>
@@ -295,11 +297,15 @@ function showGameOver() {
   running = false;
   finalScore.textContent = score;
   gameOverScreen.classList.remove('hidden');
+  overlay.classList.remove('hidden');
   overlay.classList.add('active');
 }
 
 function startGame() {
   initGame();
+  startScreen.classList.add('hidden');
+  gameOverScreen.classList.add('hidden');
+  overlay.classList.add('hidden');
   running = true;
   animId = requestAnimationFrame(gameLoop);
 }
@@ -323,12 +329,18 @@ canvas.addEventListener('touchmove', e => {
   if (ball.stuck) ball.x = paddle.x + paddle.w / 2;
 }, { passive: false });
 
+playBtn.addEventListener('click', () => startGame());
+
+playAgainBtn.addEventListener('click', () => startGame());
+
 document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft' || e.key === 'a') paddle.x -= PADDLE_SPEED;
   if (e.key === 'ArrowRight' || e.key === 'd') paddle.x += PADDLE_SPEED;
   paddle.x = Math.max(0, Math.min(W - paddle.w, paddle.x));
   if (ball.stuck) ball.x = paddle.x + paddle.w / 2;
   if (e.key === ' ' && ball.stuck) launchBall();
+  if (e.key === 'Enter' && !running && !gameOver) startGame();
+  if (e.key === 'Enter' && gameOver) startGame();
 });
 
 canvas.addEventListener('click', () => { if (ball.stuck) launchBall(); });
