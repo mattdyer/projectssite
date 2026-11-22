@@ -134,7 +134,7 @@
       stars: createStars(100),
       alienDir: 1, alienSpeed: 0.5, alienDropAmount: 12,
       alienAnimFrame: 0, alienAnimTimer: 0, alienShootTimer: 0,
-      waveDelay: 0, gameOver: false, won: false,
+      waveDelay: 0, gameOver: false, won: false, lastHit: 0,
       mobileLeft: false, mobileRight: false, mobileShoot: false,
       shootCooldown: false
     };
@@ -285,28 +285,54 @@
         }
       }
 
-      // Collision: enemy bullets vs player
+      // Collision: enemy bullets vs player (skip during invincibility)
       const pp = g.player;
-      for (let i = g.enemyBullets.length - 1; i >= 0; i--) {
-        const b = g.enemyBullets[i];
-        if (b.x < pp.x + pp.w && b.x + b.w > pp.x && b.y < pp.y + pp.h && b.y + b.h > pp.y) {
-          g.enemyBullets.splice(i, 1);
-          spawnParticles(pp.x + pp.w/2, pp.y, '#0ff', 15);
-          playSound(100, 0.4, 'sawtooth', 0.12);
-          endGame(false);
+      if (g.lastHit === 0 || Date.now() - g.lastHit > 1200) {
+        for (let i = g.enemyBullets.length - 1; i >= 0; i--) {
+          const b = g.enemyBullets[i];
+          if (b.x < pp.x + pp.w && b.x + b.w > pp.x && b.y < pp.y + pp.h && b.y + b.h > pp.y) {
+            g.enemyBullets.splice(i, 1);
+            spawnParticles(pp.x + pp.w/2, pp.y, '#0ff', 15);
+            playSound(100, 0.4, 'sawtooth', 0.12);
+            g.lives--;
+            g.lastHit = Date.now();
+            g.waveDelay = 60;
+            if (g.lives <= 0) {
+              g.gameOver = true;
+              finalScoreEl.textContent = 'Score: ' + g.score;
+              gameOverScreen.style.display = 'flex';
+            }
+          }
         }
       }
 
       // Aliens reached player level
-      for (let i = 0; i < aliveAliens.length; i++) {
-        if (aliveAliens[i].y + 36 > pp.y) { endGame(false); break; }
+      if (g.lastHit === 0 || Date.now() - g.lastHit > 1200) {
+        for (let i = 0; i < aliveAliens.length; i++) {
+          if (aliveAliens[i].y + 36 > pp.y) { g.gameOver = true; break; }
+        }
       }
 
       // All aliens dead
-      if (aliveAliens.length === 0 && g.running) { endGame(true); }
-
-      // Wave delay
-      if (g.waveDelay > 0) { g.waveDelay--; }
+      if (aliveAliens.length === 0 && g.running) {
+        g.wave++;
+        g.waveDelay = 90;
+        playSound(523, 0.15, 'square', 0.12);
+        setTimeout(()=>playSound(659, 0.15, 'square', 0.12), 120);
+        setTimeout(()=>playSound(784, 0.15, 'square', 0.12), 240);
+        setTimeout(()=>playSound(1047, 0.3, 'square', 0.12), 360);
+        g.gameOver = true;
+        setTimeout(function() {
+          if (!game) return;
+          initAliens();
+          game.bullets = [];
+          game.enemyBullets = [];
+          game.waveDelay = 0;
+          game.gameOver = false;
+          game.running = true;
+          requestAnimationFrame(gameLoop);
+        }, 1500);
+      }
 
       // Particles
       for (let i = g.particles.length - 1; i >= 0; i--) {
@@ -316,17 +342,22 @@
       }
     }
 
+    // Wave delay (always decrement, even during invincibility between lives)
+    if (g && g.waveDelay > 0) { g.waveDelay--; }
+
     // Render
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, 480, 640);
 
     // Stars
+    if (g && g.stars) {
     for (let i = 0; i < g.stars.length; i++) {
       const s = g.stars[i];
       s.y += s.speed;
       if (s.y > 640) { s.y = 0; s.x = Math.random()*480; }
       ctx.fillStyle = 'rgba(255,255,255,' + s.brightness + ')';
       ctx.fillRect(s.x, s.y, 1, 1);
+    }
     }
 
     if (g.running || g.waveDelay > 0) {
