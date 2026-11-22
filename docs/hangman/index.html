@@ -156,12 +156,14 @@ function pickWord() {
   // dedupe
   const unique = [...new Set(list)];
   word = unique[Math.floor(Math.random() * unique.length)].toUpperCase();
-  document.getElementById("category-text").textContent = cat;
+  const catText = document.getElementById("category-text");
+  if (catText) catText.textContent = cat;
   wordList = [...word];
 }
 
 function renderWord() {
   const display = document.getElementById("word-display");
+  if (!display) return;
   display.innerHTML = "";
   for (const ch of word) {
     const span = document.createElement("span");
@@ -179,6 +181,7 @@ function renderWord() {
 
 function renderKeyboard() {
   const kb = document.getElementById("keyboard");
+  if (!kb) return;
   kb.innerHTML = "";
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   for (const ch of alphabet) {
@@ -303,6 +306,7 @@ function drawHangman() {
 
 function handleGuess(ch) {
   if (gameOver || guessed.has(ch)) return;
+  if (!word) return;
   guessed.add(ch);
   if (!word.includes(ch)) {
     wrong++;

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tower of Hanoi</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem;
+        }
+        h1 {
+            color: #ffffff;
+            margin-bottom: 0.5rem;
+            font-size: 1.5rem;
+        }
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .controls label { color: #aaa; font-size: 0.9rem; }
+        .controls select, .controls button {
+            background: #1a1a2e;
+            border: 1px solid #333;
+            color: #e0e0e0;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .controls button:hover { border-color: #7ecfff; }
+        .stats {
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+            color: #aaa;
+        }
+        .stats span { color: #7ecfff; font-weight: bold; }
+        .game-area {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+            margin-top: 1rem;
+        }
+        .tower {
+            width: 180px;
+            height: 300px;
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            cursor: pointer;
+            border: 2px dashed #333;
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            padding-top: 4px;
+            transition: border-color 0.2s, background 0.2s;
+            position: relative;
+        }
+        .tower:hover { border-color: #555; }
+        .tower.selected {
+            border-color: #7ecfff;
+            background: rgba(126, 207, 255, 0.05);
+        }
+        .tower::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            width: 4px;
+            height: 100%;
+            background: #444;
+            z-index: 0;
+            border-radius: 2px;
+        }
+        .disk {
+            height: 28px;
+            border-radius: 14px;
+            border: 1px solid rgba(0,0,0,0.3);
+            z-index: 1;
+            transition: transform 0.15s;
+        }
+        .disk:hover { transform: scaleY(1.1); }
+        .tower.selected .disk {
+            transform: translateY(-8px);
+        }
+        .base {
+            width: 600px;
+            height: 12px;
+            background: #333;
+            border-radius: 6px;
+        }
+        #message {
+            margin-top: 1.5rem;
+            font-size: 1.1rem;
+            color: #7ecfff;
+            min-height: 1.5em;
+        }
+        #message.win { color: #4caf50; font-weight: bold; }
+        .instructions {
+            margin-top: 1.5rem;
+            max-width: 500px;
+            text-align: center;
+            color: #888;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+        @media (max-width: 600px) {
+            .tower { width: 100px; height: 200px; }
+            .base { width: 340px; }
+            .disk { height: 20px; border-radius: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Tower of Hanoi</h1>
+    <div class="controls">
+        <label for="numDiscs">Disks:</label>
+        <select id="numDiscs">
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5" selected>5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+        </select>
+        <button id="newGame">New Game</button>
+    </div>
+    <div class="stats">
+        Moves: <span id="moveCount">0</span> |
+        Min moves: <span id="minMoves">31</span> |
+        Optimal: <span id="optimal">—</span>
+    </div>
+    <div class="game-area">
+        <div class="tower" data-tower="0" onclick="handleTower(0)">
+            <div class="tower-label" style="color:#555;font-size:0.75rem;position:absolute;bottom:-22px;">A</div>
+        </div>
+        <div class="tower" data-tower="1" onclick="handleTower(1)">
+            <div class="tower-label" style="color:#555;font-size:0.75rem;position:absolute;bottom:-22px;">B</div>
+        </div>
+        <div class="tower" data-tower="2" onclick="handleTower(2)">
+            <div class="tower-label" style="color:#555;font-size:0.75rem;position:absolute;bottom:-22px;">C</div>
+        </div>
+    </div>
+    <div class="base"></div>
+    <div id="message">Click a tower to select a disk, then click another to move it.</div>
+    <p class="instructions">
+        Move all disks from Tower A to Tower C. You may only move one disk at a time,
+        and a larger disk may never be placed on top of a smaller one.
+    </p>
+
+    <script>
+        const COLORS = [
+            '#e74c3c', '#e67e22', '#f1c40f', '#2ecc71',
+            '#3498db', '#9b59b6', '#1abc9c', '#e84393'
+        ];
+
+        let towers = [[], [], []];
+        let numDiscs = 5;
+        let selectedTower = -1;
+        let moves = 0;
+        let won = false;
+
+        function newGame() {
+            numDiscs = parseInt(document.getElementById('numDiscs').value);
+            towers = [[], [], []];
+            for (let i = numDiscs; i >= 1; i--) {
+                towers[0].push(i);
+            }
+            selectedTower = -1;
+            moves = 0;
+            won = false;
+            updateUI();
+            document.getElementById('message').textContent = 'Click a tower to select a disk, then click another to move it.';
+            document.getElementById('message').classList.remove('win');
+        }
+
+        function renderTower(towerIndex) {
+            const towerEl = document.querySelectorAll('.tower')[towerIndex];
+            // Remove old disks (keep the label)
+            const disks = towerEl.querySelectorAll('.disk');
+            disks.forEach(d => d.remove());
+
+            // Remove selected state
+            towerEl.classList.remove('selected');
+
+            // Render disks for this tower
+            towers[towerIndex].forEach(diskSize => {
+                const disk = document.createElement('div');
+                disk.className = 'disk';
+                const maxW = 140;
+                const minW = 50;
+                const width = minW + ((diskSize - 1) / (numDiscs - 1 || 1)) * (maxW - minW);
+                disk.style.width = width + 'px';
+                disk.style.background = COLORS[(diskSize - 1) % COLORS.length];
+                towerEl.appendChild(disk);
+            });
+
+            if (selectedTower === towerIndex) {
+                towerEl.classList.add('selected');
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('moveCount').textContent = moves;
+            document.getElementById('minMoves').textContent = Math.pow(2, numDiscs) - 1;
+
+            const min = Math.pow(2, numDiscs) - 1;
+            document.getElementById('optimal').textContent =
+                moves === 0 ? '—' : (moves === min ? '✓ Optimal!' : `${moves - min} over optimal`);
+
+            for (let i = 0; i < 3; i++) renderTower(i);
+
+            // Check win
+            if (towers[2].length === numDiscs && !won) {
+                won = true;
+                const msg = document.getElementById('message');
+                msg.textContent = `🎉 Completed in ${moves} moves! ${moves === min ? 'Optimal solution!' : ''}`;
+                msg.classList.add('win');
+            }
+        }
+
+        function handleTower(index) {
+            if (won) return;
+
+            if (selectedTower === -1) {
+                // Select a tower with disks
+                if (towers[index].length === 0) {
+                    const msg = document.getElementById('message');
+                    msg.textContent = 'That tower has no disks to select.';
+                    return;
+                }
+                selectedTower = index;
+                updateUI();
+            } else if (selectedTower === index) {
+                // Deselect
+                selectedTower = -1;
+                updateUI();
+            } else {
+                // Try to move disk
+                const fromTower = selectedTower;
+                const diskToMove = towers[fromTower][towers[fromTower].length - 1];
+                const targetTower = index;
+
+                // Check if move is valid (disk can go on empty tower or larger disk)
+                const targetTop = towers[targetTower].length > 0
+                    ? towers[targetTower][towers[targetTower].length - 1]
+                    : Infinity;
+
+                if (diskToMove < targetTop) {
+                    towers[targetTower].push(towers[fromTower].pop());
+                    moves++;
+                    selectedTower = -1;
+                    updateUI();
+                } else {
+                    const msg = document.getElementById('message');
+                    msg.textContent = 'Invalid move: cannot place a larger disk on a smaller one.';
+                    selectedTower = -1;
+                    updateUI();
+                    setTimeout(() => {
+                        if (!won) msg.textContent = 'Click a tower to select a disk, then click another to move it.';
+                    }, 1500);
+                }
+            }
+        }
+
+        // Initialize
+        document.getElementById('newGame').addEventListener('click', newGame);
+        document.getElementById('numDiscs').addEventListener('change', newGame);
+        newGame();
+    </script>
+</body>
+</html>
