@@ -191,10 +191,16 @@
       setTimeout(nextWave, 1500);
     } else {
       game.lives--;
+      game.enemyBullets = [];
+      game.player.x = 220;
+      game.waveDelay = 60;
       playSound(200, 0.5, 'sawtooth', 0.15);
       if (game.lives <= 0) {
         finalScoreEl.textContent = 'Score: ' + game.score;
         gameOverScreen.style.display = 'flex';
+      } else {
+        game.running = true;
+        requestAnimationFrame(gameLoop);
       }
     }
   }
@@ -203,7 +209,9 @@
     initAliens();
     game.bullets = [];
     game.enemyBullets = [];
+    game.waveDelay = 0;
     game.running = true;
+    requestAnimationFrame(gameLoop);
   }
 
   function gameLoop() {
