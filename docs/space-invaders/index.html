@@ -200,6 +200,7 @@
         gameOverScreen.style.display = 'flex';
       } else {
         game.running = true;
+        game.gameOver = false;
         requestAnimationFrame(gameLoop);
       }
     }
@@ -210,6 +211,7 @@
     game.bullets = [];
     game.enemyBullets = [];
     game.waveDelay = 0;
+    game.gameOver = false;
     game.running = true;
     requestAnimationFrame(gameLoop);
   }
