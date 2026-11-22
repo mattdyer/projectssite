@@ -299,6 +299,7 @@
             g.lives--;
             g.lastHit = Date.now();
             g.waveDelay = 60;
+            g.running = true;
             if (g.lives <= 0) {
               g.gameOver = true;
               finalScoreEl.textContent = 'Score: ' + g.score;
