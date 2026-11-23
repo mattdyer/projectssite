@@ -137,7 +137,7 @@ let laps=[], lastLapTime=0;
 
 function swTick(){
   const now=performance.now();
-  swElapsed=swStart+(now-swStart);
+  swElapsed=(now-swStart)+swElapsed;
   document.getElementById('sw-display').innerHTML=fmt(swElapsed).str+'<span class="ms">'+fmt(swElapsed).mil+'</span>';
   if(swRunning) swRAF=requestAnimationFrame(swTick);
 }
@@ -193,7 +193,7 @@ function timerTick(){
     triggerAlarm();
     return;
   }
-  if(timerRAF) timerRAF=requestAnimationFrame(timerTick);
+  timerRAF=requestAnimationFrame(timerTick);
 }
 function timerToggle(){
   const btn=document.getElementById('timer-start');

@@ -114,6 +114,11 @@ h1 {
   gap: 8px;
   justify-content: center;
   padding: 0 8px;
+  position: sticky;
+  bottom: 0;
+  background: #0a1628;
+  padding-top: 8px;
+  z-index: 10;
 }
 button {
   padding: 8px 20px;
@@ -368,14 +373,14 @@ function placeShip(r, c, drag) {
   if (!canPlace(playerBoard, r, c, size, horizontal)) {
     if (!drag) return; // allow drag-through
   }
-  cells.forEach(cell => {
-    if (canPlace(playerBoard, r, c, size, horizontal) || playerBoard[cell.r][cell.c] === 1) {
+  if (canPlace(playerBoard, r, c, size, horizontal)) {
+    cells.forEach(cell => {
       playerBoard[cell.r][cell.c] = 1;
-    }
-  });
-  playerShips[idx].placed = true;
-  renderPlayerBoard();
-  checkPlacementComplete();
+    });
+    playerShips[idx].placed = true;
+    renderPlayerBoard();
+    checkPlacementComplete();
+  }
 }
 
 function renderPlayerBoard() {

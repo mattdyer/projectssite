@@ -134,7 +134,7 @@
       stars: createStars(100),
       alienDir: 1, alienSpeed: 0.5, alienDropAmount: 12,
       alienAnimFrame: 0, alienAnimTimer: 0, alienShootTimer: 0,
-      waveDelay: 0, gameOver: false, won: false, lastHit: 0,
+      waveDelay: 0, gameOver: false, won: false, hitThisFrame: false,
       mobileLeft: false, mobileRight: false, mobileShoot: false,
       shootCooldown: false
     };
@@ -168,6 +168,7 @@
     game = createGame();
     initAliens();
     game.running = true;
+    game.hitThisFrame = false;
     startScreen.style.display = 'none';
     gameOverScreen.style.display = 'none';
     playSound(440, 0.1, 'square', 0.15);
@@ -190,6 +191,8 @@
       setTimeout(()=>playSound(1047, 0.3, 'square', 0.12), 360);
       setTimeout(nextWave, 1500);
     } else {
+      if (game.hitThisFrame) return;
+      game.hitThisFrame = true;
       game.lives--;
       game.enemyBullets = [];
       game.player.x = 220;
@@ -289,30 +292,21 @@
 
       // Collision: enemy bullets vs player (skip during invincibility)
       const pp = g.player;
-      if (g.lastHit === 0 || Date.now() - g.lastHit > 1200) {
-        for (let i = g.enemyBullets.length - 1; i >= 0; i--) {
-          const b = g.enemyBullets[i];
-          if (b.x < pp.x + pp.w && b.x + b.w > pp.x && b.y < pp.y + pp.h && b.y + b.h > pp.y) {
-            g.enemyBullets.splice(i, 1);
-            spawnParticles(pp.x + pp.w/2, pp.y, '#0ff', 15);
-            playSound(100, 0.4, 'sawtooth', 0.12);
-            g.lives--;
-            g.lastHit = Date.now();
-            g.waveDelay = 60;
-            if (g.lives <= 0) {
-              g.gameOver = true;
-              finalScoreEl.textContent = 'Score: ' + g.score;
-              gameOverScreen.style.display = 'flex';
-            }
-          }
+      for (let i = g.enemyBullets.length - 1; i >= 0; i--) {
+        const b = g.enemyBullets[i];
+        if (b.x < pp.x + pp.w && b.x + b.w > pp.x && b.y < pp.y + pp.h && b.y + b.h > pp.y) {
+          g.enemyBullets.splice(i, 1);
+          spawnParticles(pp.x + pp.w/2, pp.y, '#0ff', 15);
+          playSound(100, 0.4, 'sawtooth', 0.12);
+          endGame(false);
+          game.hitThisFrame = false;
+          break;
         }
       }
 
       // Aliens reached player level
-      if (g.lastHit === 0 || Date.now() - g.lastHit > 1200) {
-        for (let i = 0; i < aliveAliens.length; i++) {
-          if (aliveAliens[i].y + 36 > pp.y) { g.gameOver = true; break; }
-        }
+      for (let i = 0; i < aliveAliens.length; i++) {
+        if (aliveAliens[i].y + 36 > pp.y) { endGame(false); game.hitThisFrame = false; break; }
       }
 
       // All aliens dead

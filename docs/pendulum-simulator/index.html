@@ -315,16 +315,14 @@ canvas.addEventListener('touchend', () => dragging = false);
 // ── Physics ──
 function step(dt) {
   const p = getParams();
-  // RK4 integration for damped pendulum
+  // Single RK4 integration step for damped pendulum
   const f = (th, om) => [om, -(p.g / p.L) * Math.sin(th) - p.b * om];
-  for (let i = 0; i < 4; i++) {
-    const [k1t, k1o] = f(theta, omega);
-    const [k2t, k2o] = f(theta + k1t*dt/2, omega + k1o*dt/2);
-    const [k3t, k3o] = f(theta + k2t*dt/2, omega + k2o*dt/2);
-    const [k4t, k4o] = f(theta + k3t*dt, omega + k3o*dt);
-    theta += dt/6 * (k1t + 2*k2t + 2*k3t + k4t);
-    omega += dt/6 * (k1o + 2*k2o + 2*k3o + k4o);
-  }
+  const [k1t, k1o] = f(theta, omega);
+  const [k2t, k2o] = f(theta + k1t*dt/2, omega + k1o*dt/2);
+  const [k3t, k3o] = f(theta + k2t*dt/2, omega + k2o*dt/2);
+  const [k4t, k4o] = f(theta + k3t*dt, omega + k3o*dt);
+  theta += dt/6 * (k1t + 2*k2t + 2*k3t + k4t);
+  omega += dt/6 * (k1o + 2*k2o + 2*k3o + k4o);
   // Period estimate (small-angle approximation, updated dynamically)
   if (Math.abs(omega) < 0.01 && trail.length < 5) {
     // not used for display during swing

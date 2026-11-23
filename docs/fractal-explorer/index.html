@@ -211,9 +211,9 @@ let needsRender = true;
 // ===================== PALETTES =====================
 const palettes = {
   electric: (t) => {
-    const r = Math.floor(Math.sin(t * 0.4 + 0.0) * 0.5 + 0.5) * 255;
-    const g = Math.floor(Math.sin(t * 0.4 + 2.094) * 0.5 + 0.5) * 255;
-    const b = Math.floor(Math.sin(t * 0.4 + 4.188) * 0.5 + 0.5) * 255;
+    const r = Math.floor((Math.sin(t * 0.4 + 0.0) * 0.5 + 0.5) * 255);
+    const g = Math.floor((Math.sin(t * 0.4 + 2.094) * 0.5 + 0.5) * 255);
+    const b = Math.floor((Math.sin(t * 0.4 + 4.188) * 0.5 + 0.5) * 255);
     return [r, g, b];
   },
   fire: (t) => {
@@ -393,7 +393,7 @@ function renderFractal() {
     if (thisRender !== renderId) { bmp.close(); return; }
     ctx.clearRect(0, 0, w, h);
     ctx.drawImage(bmp, 0, 0, w, h);
-    bitmap.close();
+    bmp.close();
     rendering = false;
   });
 }

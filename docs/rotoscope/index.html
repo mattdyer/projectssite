@@ -716,13 +716,7 @@ function drawPathOnCtx(ctx, points, offX, offY, highlight) {
       const c1y = pt.cp1y * imageDisplayScale + offY;
       const c2x = pt.cp2x * imageDisplayScale + offX;
       const c2y = pt.cp2y * imageDisplayScale + offY;
-      ctx.bezierCurveTo(
-        points[i-1].x * imageDisplayScale + offX,
-        points[i-1].y * imageDisplayScale + offY,
-        c1x, c1y, c2x, c2y
-      );
-      // Note: pt.x, pt.y are the endpoint of the bezier
-      ctx.lineTo(pt.x * imageDisplayScale + offX, pt.y * imageDisplayScale + offY);
+      ctx.bezierCurveTo(c1x, c1y, c2x, c2y, pt.x * imageDisplayScale + offX, pt.y * imageDisplayScale + offY);
     } else {
       ctx.lineTo(pt.x * imageDisplayScale + offX, pt.y * imageDisplayScale + offY);
     }
