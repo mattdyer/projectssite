@@ -278,7 +278,7 @@ function submitGuess() {
 
   if (!guess) return;
 
-  if (guess === word) {
+  if (normalizeAnswer(guess) === normalizeAnswer(word)) {
     // Correct!
     clearInterval(timerInterval);
     const timeBonus = Math.round(timeLeft);
@@ -311,9 +311,22 @@ function useHint() {
   hintUsed = true;
   timeLeft = Math.max(0, timeLeft - 5);
   updateTimerBar();
-  const first = word[0];
+  const first = word.replace(/\s/g, '')[0];
   document.getElementById('feedback').textContent = `💡 First letter: "${first}"`;
   document.getElementById('feedback').className = '';
+}
+
+function endGame() {
+  clearInterval(timerInterval);
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('gameover-screen').style.display = 'flex';
+  document.getElementById('final-score').textContent = score;
+  const accuracy = ROUND_COUNT > 0 ? Math.round((correctCount / ROUND_COUNT) * 100) : 0;
+  document.getElementById('final-stats').textContent = `Correct: ${correctCount} / ${ROUND_COUNT} (${accuracy}% accuracy)`;
+}
+
+function normalizeAnswer(text) {
+  return text.toUpperCase().replace(/\s+/g, '');
 }
 
 // Event listeners
