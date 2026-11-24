@@ -245,9 +245,9 @@ function fire() {
     const p = projectile;
     p.t += p.dt;
     const vx = p.v0 * Math.cos(p.angleRad);
-    const vy = p.v0 * Math.sin(p.angleRad) - p.g * p.t;
+    const vy = p.g * p.t - p.v0 * Math.sin(p.angleRad); // downward-positive
     const x = p.startX + vx * p.t * SCALE;
-    const y = p.startY + (p.v0 * Math.sin(p.angleRad) * p.t - 0.5 * p.g * p.t * p.t) * SCALE;
+    const y = p.startY - (p.v0 * Math.sin(p.angleRad) * p.t - 0.5 * p.g * p.t * p.t) * SCALE;
 
     trail.push({ x, y });
 
@@ -410,7 +410,7 @@ function draw() {
 
     // Real-time info
     const speed = Math.hypot(p.vx, p.vy);
-    const curH = (p.startY - p.cy) / SCALE;
+    const curH = p.h0 + (p.startY - p.cy) / SCALE;
     document.getElementById('cur-speed').textContent = speed.toFixed(1) + ' m/s';
     document.getElementById('cur-h').textContent = Math.max(0, curH).toFixed(1) + ' m';
   }
