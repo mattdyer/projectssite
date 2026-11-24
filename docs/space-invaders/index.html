@@ -203,6 +203,7 @@
         gameOverScreen.style.display = 'flex';
       } else {
         game.running = true;
+        game.gameOver = false;
         requestAnimationFrame(gameLoop);
       }
     }
@@ -213,6 +214,7 @@
     game.bullets = [];
     game.enemyBullets = [];
     game.waveDelay = 0;
+    game.gameOver = false;
     game.running = true;
     requestAnimationFrame(gameLoop);
   }
@@ -288,7 +290,7 @@
         }
       }
 
-      // Collision: enemy bullets vs player
+      // Collision: enemy bullets vs player (skip during invincibility)
       const pp = g.player;
       for (let i = g.enemyBullets.length - 1; i >= 0; i--) {
         const b = g.enemyBullets[i];
@@ -308,10 +310,25 @@
       }
 
       // All aliens dead
-      if (aliveAliens.length === 0 && g.running) { endGame(true); }
-
-      // Wave delay
-      if (g.waveDelay > 0) { g.waveDelay--; }
+      if (aliveAliens.length === 0 && g.running) {
+        g.wave++;
+        g.waveDelay = 90;
+        playSound(523, 0.15, 'square', 0.12);
+        setTimeout(()=>playSound(659, 0.15, 'square', 0.12), 120);
+        setTimeout(()=>playSound(784, 0.15, 'square', 0.12), 240);
+        setTimeout(()=>playSound(1047, 0.3, 'square', 0.12), 360);
+        g.gameOver = true;
+        setTimeout(function() {
+          if (!game) return;
+          initAliens();
+          game.bullets = [];
+          game.enemyBullets = [];
+          game.waveDelay = 0;
+          game.gameOver = false;
+          game.running = true;
+          requestAnimationFrame(gameLoop);
+        }, 1500);
+      }
 
       // Particles
       for (let i = g.particles.length - 1; i >= 0; i--) {
@@ -321,17 +338,22 @@
       }
     }
 
+    // Wave delay (always decrement, even during invincibility between lives)
+    if (g && g.waveDelay > 0) { g.waveDelay--; }
+
     // Render
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, 480, 640);
 
     // Stars
+    if (g && g.stars) {
     for (let i = 0; i < g.stars.length; i++) {
       const s = g.stars[i];
       s.y += s.speed;
       if (s.y > 640) { s.y = 0; s.x = Math.random()*480; }
       ctx.fillStyle = 'rgba(255,255,255,' + s.brightness + ')';
       ctx.fillRect(s.x, s.y, 1, 1);
+    }
     }
 
     if (g.running || g.waveDelay > 0) {
