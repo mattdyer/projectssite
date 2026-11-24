@@ -280,10 +280,15 @@
   document.querySelectorAll('.preset-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const days = parseFloat(btn.dataset.days) || 1;
-      const half = btn.dataset.half === '1' ? 0.5 : 1;
-      const ms = days * 24 * 3600 * 1000 * half;
+      const ms = days * 24 * 3600 * 1000;
       const target = Date.now() + ms;
-      document.getElementById('eventDate').value = new Date(target).toISOString().slice(0, 16);
+      const d = new Date(target);
+      const localStr = d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0') + 'T' +
+        String(d.getHours()).padStart(2, '0') + ':' +
+        String(d.getMinutes()).padStart(2, '0');
+      document.getElementById('eventDate').value = localStr;
       document.getElementById('eventName').value = days === 1 ? '🎆 New Year Countdown' :
         days === 365 ? '🎂 1 Year From Now' :
         days === 100 ? '🚀 100 Days From Now' :
