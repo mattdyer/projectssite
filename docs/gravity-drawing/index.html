@@ -113,7 +113,7 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
 // State
-let strokes = [];       // array of {points:[{x,y,c}], frozen:false}
+let strokes = [];       // array of {points:[{x,y,c,size,vx,vy,life}], frozen:false}
 let frozenParticles = []; // individual dots that have fallen off
 let currentStroke = null;
 let isDrawing = false;
@@ -125,7 +125,9 @@ function resize() {
   const maxH = Math.min(window.innerHeight * 0.65, 550);
   canvas.width = Math.floor(maxW);
   canvas.height = Math.floor(maxH);
-  if (!isDrawing) ctx.fillStyle = '#0d0d22';
+  // Fully opaque background (canvas was cleared by the width/height reset)
+  ctx.fillStyle = '#0d0d22';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
   redraw();
 }
 window.addEventListener('resize', resize);
@@ -163,6 +165,18 @@ function freezeAll() {
   isDrawing = false;
 }
 
+function makePoint(pos) {
+  return {
+    x: pos.x,
+    y: pos.y,
+    c: colorPicker.value,
+    size: parseInt(brushSlider.value),
+    vx: 0,
+    vy: 0,
+    life: 1
+  };
+}
+
 // Drawing input
 function getPos(e) {
   const rect = canvas.getBoundingClientRect();
@@ -185,28 +199,42 @@ function startDraw(e) {
   const pos = getPos(e);
   isDrawing = true;
   if (mode === 'draw') {
-    currentStroke = { points: [pos], frozen: false };
+    currentStroke = { points: [makePoint(pos)], frozen: false };
     strokes.push(currentStroke);
   } else {
     // Erase: remove strokes near point
-    const r = parseInt(brushSlider.value) * 2;
-    strokes = strokes.filter(s => {
-      for (const p of s.points) {
-        const dx = p.x - pos.x, dy = p.y - pos.y;
-        if (dx*dx + dy*dy < r*r) return false;
-      }
-      return true;
-    });
-    redraw();
+    eraseAt(pos);
   }
 }
 
+function eraseAt(pos) {
+  const r = parseInt(brushSlider.value) * 2;
+  strokes = strokes.filter(s => {
+    for (const p of s.points) {
+      const dx = p.x - pos.x, dy = p.y - pos.y;
+      if (dx*dx + dy*dy < r*r) return false;
+    }
+    return true;
+  });
+  // Also remove frozen particles near point
+  frozenParticles = frozenParticles.filter(p => {
+    const dx = p.x - pos.x, dy = p.y - pos.y;
+    return dx*dx + dy*dy >= r*r;
+  });
+  redraw();
+  updateStats();
+}
+
 function moveDraw(e) {
-  if (!isDrawing || mode !== 'draw') return;
+  if (!isDrawing) return;
   e.preventDefault();
   const pos = getPos(e);
-  if (currentStroke) {
-    currentStroke.points.push(pos);
+  if (mode === 'draw') {
+    if (currentStroke) {
+      currentStroke.points.push(makePoint(pos));
+    }
+  } else {
+    eraseAt(pos);
   }
 }
 
@@ -288,39 +316,33 @@ function animate() {
   if (gravity > 0) {
     const gravityForce = gravity * 2;
 
-    // Update current (active) stroke
-    if (currentStroke && !currentStroke.frozen) {
-      const pts = currentStroke.points;
-      const lastPt = pts[pts.length - 1];
-      const baseY = lastPt.y;
-      const baseSize = lastPt.size || parseInt(brushSlider.value);
-      const baseColor = lastPt.c || colorPicker.value;
+    // Update stroke points — strokes fall under gravity
+    for (const stroke of strokes) {
+      if (stroke.frozen) continue;
+      for (const p of stroke.points) {
+        p.vy = (p.vy || 0) + gravityForce * 0.3;
+        p.x += (p.vx || 0);
+        p.y += p.vy;
+        p.life = (p.life === undefined ? 1 : p.life) - 0.003;
 
-      // Create falling particles from recent points
-      const spawnRate = Math.max(1, Math.floor(gravityForce * 3));
-      for (let i = 0; i < spawnRate && pts.length > 0; i++) {
-        const idx = pts.length - 1 - Math.floor(Math.random() * Math.min(5, pts.length));
-        const src = pts[idx];
-        frozenParticles.push({
-          x: src.x + (Math.random() - 0.5) * baseSize * 0.5,
-          y: src.y,
-          vx: (Math.random() - 0.5) * 1.5 * gravityForce,
-          vy: Math.random() * 0.5,
-          r: baseSize * 0.3 + Math.random() * 2,
-          c: src.c || baseColor,
-          life: 1.0
-        });
-      }
+        // Bounce off bottom
+        if (p.y > canvas.height - 2) {
+          p.y = canvas.height - 2;
+          p.vy *= -0.4;
+          p.vx = (p.vx || 0) * 0.8;
+        }
 
-      // Remove points that have fallen
-      const pointsToRemove = [];
-      pts.forEach((p, idx) => {
-        if (p.y > canvas.height + 20) pointsToRemove.push(idx);
-      });
-      if (pointsToRemove.length > 0) {
-        pointsToRemove.reverse().forEach(i => pts.splice(i, 1));
+        // Bounce off walls (clamp position so particles don't drift off-screen)
+        if (p.x < 0 || p.x > canvas.width) {
+          p.x = Math.max(0, Math.min(canvas.width, p.x));
+          p.vx = (p.vx || 0) * -0.6;
+        }
       }
+      // Remove dead points
+      stroke.points = stroke.points.filter(p => p.life > 0);
     }
+    // Remove empty strokes
+    strokes = strokes.filter(s => s.points.length > 0);
 
     // Update frozen particles
     for (let i = frozenParticles.length - 1; i >= 0; i--) {
@@ -337,8 +359,11 @@ function animate() {
         p.vx *= 0.8;
       }
 
-      // Bounce off walls
-      if (p.x < 0 || p.x > canvas.width) p.vx *= -0.6;
+      // Bounce off walls (clamp position so particles don't drift off-screen)
+      if (p.x < 0 || p.x > canvas.width) {
+        p.x = Math.max(0, Math.min(canvas.width, p.x));
+        p.vx *= -0.6;
+      }
 
       if (p.life <= 0) frozenParticles.splice(i, 1);
     }
@@ -350,7 +375,6 @@ function animate() {
 }
 
 function updateStats() {
-  const totalDots = strokes.reduce((sum, s) => sum + s.points.length, 0);
   strokeCountEl.textContent = `Strokes: ${strokes.length}`;
   dotCountEl.textContent = `Particles: ${frozenParticles.length}`;
 }
