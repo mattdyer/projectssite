@@ -178,6 +178,7 @@ ctrlRight.addEventListener('touchend', e => { e.preventDefault(); keys.right = f
 
 // --- Buttons ---
 function startGame() {
+  if (idleAnimId) { cancelAnimationFrame(idleAnimId); idleAnimId = null; }
   overlay.classList.remove('active');
   startScreen.style.display = 'none';
   gameOverScreen.style.display = 'none';
@@ -266,10 +267,11 @@ function update() {
   hudScore.textContent = score;
 
   // Generate new platforms above
-  const highestPlat = Math.min(...platforms.map(p => p.y));
+  let highestPlat = Math.min(...platforms.map(p => p.y));
   while (highestPlat > camera - H) {
     const np = genPlatform(highestPlat - 70 - Math.random() * 40);
     platforms.push(np);
+    highestPlat = Math.min(...platforms.map(p => p.y));
   }
 
   // Remove off-screen platforms
@@ -404,6 +406,7 @@ function loop() {
 }
 
 // --- Idle draw ---
+let idleAnimId = null;
 function idleDraw() {
   ctx.fillStyle = '#1a1a2e';
   ctx.fillRect(0, 0, W, H);
@@ -420,9 +423,9 @@ function idleDraw() {
   ctx.beginPath(); ctx.arc(-9, -8, 3, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(11, -8, 3, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
-  requestAnimationFrame(idleDraw);
+  idleAnimId = requestAnimationFrame(idleDraw);
 }
-idleDraw();
+idleAnimId = requestAnimationFrame(idleDraw);
 </script>
 </body>
 </html>
