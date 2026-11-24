@@ -417,7 +417,7 @@
   let isRunning = false;
   let timeLeft = workDuration;
   let totalTimeForPhase = workDuration;
-  let completedSessions = 0;
+  let sessionCount = 0;
   let totalFocusMinutes = 0;
   let interval = null;
   let audioCtx = null;
@@ -481,15 +481,15 @@
   function updateSessionDots() {
     const dots = sessionDots.querySelectorAll('.session-dot');
     dots.forEach((dot, i) => {
-      dot.classList.toggle('done', i < (completedSessions % sessionsBeforeLong));
+      dot.classList.toggle('done', i < (sessionCount % sessionsBeforeLong));
     });
-    completedSessions.textContent = completedSessions;
+    completedSessions.textContent = sessionCount;
     totalTime.textContent = totalFocusMinutes;
   }
 
   function setMode() {
     body.className = isWork ? 'work' : 'break';
-    modeLabel.textContent = isWork ? 'Focus Time' : (completedSessions > 0 && completedSessions % sessionsBeforeLong === 0 ? 'Long Break' : 'Short Break');
+    modeLabel.textContent = isWork ? 'Focus Time' : (sessionCount > 0 && sessionCount % sessionsBeforeLong === 0 ? 'Long Break' : 'Short Break');
   }
 
   // Timer
@@ -510,14 +510,14 @@
     timerDisplay.classList.remove('running');
 
     if (isWork) {
-      completedSessions++;
+      sessionCount++;
       totalFocusMinutes += Math.round(totalTimeForPhase / 60);
       playCompleteSound();
       showToast('Focus complete! Time for a break 🎉');
 
       isWork = false;
       // Determine if long break
-      if (completedSessions % sessionsBeforeLong === 0) {
+      if (sessionCount % sessionsBeforeLong === 0) {
         totalTimeForPhase = longBreakDuration;
       } else {
         totalTimeForPhase = breakDuration;
