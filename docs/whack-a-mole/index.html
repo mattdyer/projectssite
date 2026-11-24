@@ -481,7 +481,7 @@
 
     // Auto-hide after duration
     setTimeout(() => {
-      if (!mole.classList.contains('hit') && gameActive) {
+      if (molesUp.has(holeIndex) && gameActive) {
         hideMole(holeIndex, isGolden);
       }
     }, diff.duration);
@@ -518,11 +518,10 @@
 
     if (mole.classList.contains('hit')) return;
 
-    // Mark as hit
+    // Mark as hit (keep in molesUp so auto-hide callback skips it)
     mole.classList.remove('mole-up');
     mole.classList.add('hit');
 
-    molesUp.delete(index);
     totalWhacks++;
     combo++;
     if (combo > highestCombo) highestCombo = combo;
