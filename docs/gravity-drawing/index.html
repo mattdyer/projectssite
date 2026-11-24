@@ -112,6 +112,13 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
+// State
+let strokes = [];       // array of {points:[{x,y,c}], frozen:false}
+let frozenParticles = []; // individual dots that have fallen off
+let currentStroke = null;
+let isDrawing = false;
+let mode = 'draw';
+
 // Sizing
 function resize() {
   const maxW = Math.min(window.innerWidth * 0.95, 800);
@@ -123,13 +130,6 @@ function resize() {
 }
 window.addEventListener('resize', resize);
 resize();
-
-// State
-let strokes = [];       // array of {points:[{x,y,c}], frozen:false}
-let frozenParticles = []; // individual dots that have fallen off
-let currentStroke = null;
-let isDrawing = false;
-let mode = 'draw';
 
 // Controls
 const brushSlider = document.getElementById('brushSize');
