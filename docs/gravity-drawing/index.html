@@ -98,13 +98,13 @@
     <button class="btn secondary" id="eraseBtn" onclick="setMode('erase')">Erase</button>
   </div>
   <button class="btn secondary" onclick="clearCanvas()">Clear</button>
-  <button class="btn secondary" onclick="freezeAll()">Freeze</button>
+  <button class="btn secondary" id="freezeBtn" onclick="toggleFreeze()">Freeze</button>
 </div>
 
 <canvas id="canvas"></canvas>
 <div class="stats">
   <span id="strokeCount">Strokes: 0</span>
-  <span id="dotCount">Particles: 0</span>
+  <span id="dotCount">Points: 0</span>
   <span id="modeDisplay">Mode: Draw</span>
 </div>
 
@@ -114,21 +114,32 @@ const ctx = canvas.getContext('2d');
 
 // State
 let strokes = [];       // array of {points:[{x,y,c,size,vx,vy,life}], frozen:false}
-let frozenParticles = []; // individual dots that have fallen off
 let currentStroke = null;
 let isDrawing = false;
 let mode = 'draw';
 
 // Sizing
 function resize() {
+  const oldW = canvas.width;
+  const oldH = canvas.height;
   const maxW = Math.min(window.innerWidth * 0.95, 800);
   const maxH = Math.min(window.innerHeight * 0.65, 550);
   canvas.width = Math.floor(maxW);
   canvas.height = Math.floor(maxH);
+  // Scale stroke coordinates to the new canvas size
+  if (oldW > 0 && oldH > 0) {
+    const sx = canvas.width / oldW;
+    const sy = canvas.height / oldH;
+    for (const stroke of strokes) {
+      for (const p of stroke.points) {
+        p.x *= sx;
+        p.y *= sy;
+      }
+    }
+  }
   // Fully opaque background (canvas was cleared by the width/height reset)
   ctx.fillStyle = '#0d0d22';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  redraw();
 }
 window.addEventListener('resize', resize);
 resize();
@@ -151,18 +162,20 @@ function setMode(m) {
 
 function clearCanvas() {
   strokes = [];
-  frozenParticles = [];
   currentStroke = null;
+  isDrawing = false;
   ctx.fillStyle = '#0d0d22';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   updateStats();
 }
 
-function freezeAll() {
-  // Freeze all current stroke points in place
-  strokes.forEach(s => { s.frozen = true; });
+function toggleFreeze() {
+  const anyFrozen = strokes.some(s => s.frozen);
+  strokes.forEach(s => { s.frozen = !anyFrozen; });
   currentStroke = null;
   isDrawing = false;
+  const btn = document.getElementById('freezeBtn');
+  btn.textContent = anyFrozen ? 'Freeze' : 'Unfreeze';
 }
 
 function makePoint(pos) {
@@ -216,13 +229,6 @@ function eraseAt(pos) {
     }
     return true;
   });
-  // Also remove frozen particles near point
-  frozenParticles = frozenParticles.filter(p => {
-    const dx = p.x - pos.x, dy = p.y - pos.y;
-    return dx*dx + dy*dy >= r*r;
-  });
-  redraw();
-  updateStats();
 }
 
 function moveDraw(e) {
@@ -231,7 +237,11 @@ function moveDraw(e) {
   const pos = getPos(e);
   if (mode === 'draw') {
     if (currentStroke) {
-      currentStroke.points.push(makePoint(pos));
+      const last = currentStroke.points[currentStroke.points.length - 1];
+      const dx = pos.x - last.x, dy = pos.y - last.y;
+      if (dx*dx + dy*dy >= 4) {  // only add point if moved at least 2px
+        currentStroke.points.push(makePoint(pos));
+      }
     }
   } else {
     eraseAt(pos);
@@ -271,14 +281,15 @@ function redraw() {
       for (const p of stroke.points) {
         ctx.fillStyle = p.c || colorPicker.value;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, (p.size || parseInt(brushSlider.value)) / 2, 0, Math.PI * 2);
         ctx.fill();
       }
       continue;
     }
 
-    ctx.strokeStyle = stroke.points[0].c || colorPicker.value;
-    ctx.lineWidth = stroke.points[0].size || parseInt(brushSlider.value);
+    const last = stroke.points[stroke.points.length - 1];
+    ctx.strokeStyle = last.c || colorPicker.value;
+    ctx.lineWidth = last.size || parseInt(brushSlider.value);
     ctx.globalAlpha = 0.85;
     ctx.beginPath();
     ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
@@ -288,8 +299,8 @@ function redraw() {
     ctx.stroke();
 
     // Glow effect
-    ctx.strokeStyle = stroke.points[0].c || colorPicker.value;
-    ctx.lineWidth = (stroke.points[0].size || parseInt(brushSlider.value)) * 2.5;
+    ctx.strokeStyle = last.c || colorPicker.value;
+    ctx.lineWidth = (last.size || parseInt(brushSlider.value)) * 2.5;
     ctx.globalAlpha = 0.15;
     ctx.beginPath();
     ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
@@ -298,14 +309,6 @@ function redraw() {
     }
     ctx.stroke();
     ctx.globalAlpha = 1;
-  }
-
-  // Draw frozen particles
-  for (const p of frozenParticles) {
-    ctx.fillStyle = p.c;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r || 2, 0, Math.PI * 2);
-    ctx.fill();
   }
 }
 
@@ -343,30 +346,6 @@ function animate() {
     }
     // Remove empty strokes
     strokes = strokes.filter(s => s.points.length > 0);
-
-    // Update frozen particles
-    for (let i = frozenParticles.length - 1; i >= 0; i--) {
-      const p = frozenParticles[i];
-      p.vy += gravityForce * 0.3;
-      p.x += p.vx;
-      p.y += p.vy;
-      p.life -= 0.003;
-
-      // Bounce off bottom
-      if (p.y > canvas.height - p.r) {
-        p.y = canvas.height - p.r;
-        p.vy *= -0.4;
-        p.vx *= 0.8;
-      }
-
-      // Bounce off walls (clamp position so particles don't drift off-screen)
-      if (p.x < 0 || p.x > canvas.width) {
-        p.x = Math.max(0, Math.min(canvas.width, p.x));
-        p.vx *= -0.6;
-      }
-
-      if (p.life <= 0) frozenParticles.splice(i, 1);
-    }
   }
 
   redraw();
@@ -376,7 +355,8 @@ function animate() {
 
 function updateStats() {
   strokeCountEl.textContent = `Strokes: ${strokes.length}`;
-  dotCountEl.textContent = `Particles: ${frozenParticles.length}`;
+  const totalPoints = strokes.reduce((sum, s) => sum + s.points.length, 0);
+  dotCountEl.textContent = `Points: ${totalPoints}`;
 }
 
 // Start
