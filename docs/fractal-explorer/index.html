@@ -167,7 +167,7 @@ input[type="color"] {
   </div>
   <div class="ctrl">
     <label>Zoom</label>
-    <input type="range" id="zoomDisplay" min="1" max="100000000" value="1" step="1">
+    <input type="range" id="zoomDisplay" min="-2" max="10" value="0" step="0.01">
   </div>
   <button id="resetBtn">Reset View</button>
   <button id="screenshotBtn">Save Image</button>
@@ -207,13 +207,14 @@ let maxIter = 200;
 let rendering = false;
 let renderId = 0;
 let needsRender = true;
+let rafPending = false;
 
 // ===================== PALETTES =====================
 const palettes = {
   electric: (t) => {
-    const r = Math.floor((Math.sin(t * 0.4 + 0.0) * 0.5 + 0.5) * 255);
-    const g = Math.floor((Math.sin(t * 0.4 + 2.094) * 0.5 + 0.5) * 255);
-    const b = Math.floor((Math.sin(t * 0.4 + 4.188) * 0.5 + 0.5) * 255);
+    const r = Math.max(0, Math.min(255, Math.floor((Math.sin(t * 0.4 + 0.0) * 0.5 + 0.5) * 255)));
+    const g = Math.max(0, Math.min(255, Math.floor((Math.sin(t * 0.4 + 2.094) * 0.5 + 0.5) * 255)));
+    const b = Math.max(0, Math.min(255, Math.floor((Math.sin(t * 0.4 + 4.188) * 0.5 + 0.5) * 255)));
     return [r, g, b];
   },
   fire: (t) => {
@@ -234,9 +235,9 @@ const palettes = {
     return [r, g, b];
   },
   neon: (t) => {
-    const r = Math.floor(Math.sin(t * 3.0) * 127 + 128);
-    const g = Math.floor(Math.sin(t * 3.0 + 2.1) * 127 + 128);
-    const b = Math.floor(Math.sin(t * 3.0 + 4.2) * 127 + 128);
+    const r = Math.max(0, Math.min(255, Math.floor(Math.sin(t * 3.0) * 127 + 128)));
+    const g = Math.max(0, Math.min(255, Math.floor(Math.sin(t * 3.0 + 2.1) * 127 + 128)));
+    const b = Math.max(0, Math.min(255, Math.floor(Math.sin(t * 3.0 + 4.2) * 127 + 128)));
     return [r, g, Math.min(255, b * 2)];
   },
   mono: (t) => {
@@ -258,9 +259,9 @@ function hslToRgb(h, s, l) {
     return p;
   };
   return [
-    Math.floor(hue2rgb(p, q, h + 1/3) * 255),
-    Math.floor(hue2rgb(p, q, h) * 255),
-    Math.floor(hue2rgb(p, q, h - 1/3) * 255)
+    Math.max(0, Math.min(255, Math.floor(hue2rgb(p, q, h + 1/3) * 255))),
+    Math.max(0, Math.min(255, Math.floor(hue2rgb(p, q, h) * 255))),
+    Math.max(0, Math.min(255, Math.floor(hue2rgb(p, q, h - 1/3) * 255)))
   ];
 }
 
@@ -270,17 +271,19 @@ function resize() {
   canvas.width = canvas.clientWidth * dpr;
   canvas.height = canvas.clientHeight * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  needsRender = true;
+  scheduleRender();
 }
 
 function renderFractal() {
-  if (rendering) return;
+  if (rendering) { needsRender = true; return; }
   const thisRender = ++renderId;
   rendering = true;
   needsRender = false;
 
   const w = canvas.clientWidth;
   const h = canvas.clientHeight;
+  if (w === 0 || h === 0) { rendering = false; return; }
+
   const imgData = ctx.createImageData(w, h);
   const data = imgData.data;
   const pal = palettes[paletteSel.value];
@@ -345,9 +348,9 @@ function renderFractal() {
         } else {
           const smoothT = iter / mi;
           // Smooth coloring
-          const smoothIter = iter + 1 - Math.log(Math.log(Math.sqrt(zr*zr + zi*zi))) / Math.log(2);
+          const smoothIter = iter + 1 - Math.log(Math.log(zr*zr + zi*zi)) / Math.log(2);
           const t = (smoothIter / mi);
-          const pi = Math.floor(t * mi) % mi;
+          const pi = Math.max(0, Math.min(mi - 1, Math.floor(t * mi) % mi));
           data[idx] = paletteLUT[pi * 3];
           data[idx+1] = paletteLUT[pi * 3 + 1];
           data[idx+2] = paletteLUT[pi * 3 + 2];
@@ -375,9 +378,9 @@ function renderFractal() {
         if (iter >= mi) {
           data[idx] = 0; data[idx+1] = 0; data[idx+2] = 0;
         } else {
-          const smoothIter = iter + 1 - Math.log(Math.log(Math.sqrt(zr*zr + zi*zi))) / Math.log(2);
+          const smoothIter = iter + 1 - Math.log(Math.log(zr*zr + zi*zi)) / Math.log(2);
           const t = (smoothIter / mi);
-          const pi = Math.floor(t * mi) % mi;
+          const pi = Math.max(0, Math.min(mi - 1, Math.floor(t * mi) % mi));
           data[idx] = paletteLUT[pi * 3];
           data[idx+1] = paletteLUT[pi * 3 + 1];
           data[idx+2] = paletteLUT[pi * 3 + 2];
@@ -388,14 +391,25 @@ function renderFractal() {
   }
 
   // Use ImageBitmap for faster draw
-  const bitmap = createImageBitmap(imgData);
-  bitmap.then(bmp => {
-    if (thisRender !== renderId) { bmp.close(); return; }
-    ctx.clearRect(0, 0, w, h);
-    ctx.drawImage(bmp, 0, 0, w, h);
-    bmp.close();
+  if (typeof createImageBitmap === 'function') {
+    const bitmap = createImageBitmap(imgData);
+    bitmap.then(bmp => {
+      if (thisRender !== renderId) { bmp.close(); return; }
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(bmp, 0, 0, w, h);
+      bmp.close();
+      rendering = false;
+      if (needsRender) scheduleRender();
+    }).catch(() => {
+      rendering = false;
+      if (needsRender) scheduleRender();
+    });
+  } else {
+    // Fallback: putImageData directly
+    ctx.putImageData(imgData, 0, 0);
     rendering = false;
-  });
+    if (needsRender) scheduleRender();
+  }
 }
 
 // ===================== INTERACTION =====================
@@ -427,8 +441,16 @@ function screenToComplex(sx, sy) {
 }
 
 function updateZoomDisplay() {
-  zoomDisplay.value = Math.round(view.zoom);
+  const logZoom = Math.log10(view.zoom);
+  const min = parseFloat(zoomDisplay.min);
+  const max = parseFloat(zoomDisplay.max);
+  zoomDisplay.value = Math.max(min, Math.min(max, logZoom));
 }
+
+zoomDisplay.addEventListener('input', () => {
+  view.zoom = Math.pow(10, parseFloat(zoomDisplay.value));
+  scheduleRender();
+});
 
 // Mouse
 canvas.addEventListener('wheel', (e) => {
@@ -459,10 +481,12 @@ canvas.addEventListener('mousemove', (e) => {
   const pt = screenToComplex(mx, my);
   coordsEl.textContent = `x: ${pt.x.toFixed(8)}, y: ${pt.y.toFixed(8)}`;
 
-  if (juliaCursor) juliaCursor.style.display = 'block';
-  if (juliaCursor) {
+  if (juliaCursor && fractalType.value === 'julia') {
+    juliaCursor.style.display = 'block';
     juliaCursor.style.left = e.clientX + 'px';
     juliaCursor.style.top = e.clientY + 'px';
+  } else if (juliaCursor) {
+    juliaCursor.style.display = 'none';
   }
 
   if (dragging) {
@@ -470,8 +494,10 @@ canvas.addEventListener('mousemove', (e) => {
     const dy = (e.clientY - dragStart.y);
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
-    const rangeX = (4.0 / view.zoom) * Math.max(1, w / h);
-    const rangeY = (4.0 / view.zoom) * Math.min(1, h / w);
+    const aspect = w / h;
+    const range = 4.0 / view.zoom;
+    const rangeX = aspect > 1 ? range * aspect : range;
+    const rangeY = aspect > 1 ? range : range / aspect;
     view.cx = dragViewStart.cx - (dx / w) * rangeX;
     view.cy = dragViewStart.cy - (dy / h) * rangeY;
     scheduleRender();
@@ -515,8 +541,10 @@ canvas.addEventListener('touchmove', (e) => {
     const dy = e.touches[0].clientY - dragStart.y;
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
-    const rangeX = (4.0 / view.zoom) * Math.max(1, w / h);
-    const rangeY = (4.0 / view.zoom) * Math.min(1, h / w);
+    const aspect = w / h;
+    const range = 4.0 / view.zoom;
+    const rangeX = aspect > 1 ? range * aspect : range;
+    const rangeY = aspect > 1 ? range : range / aspect;
     view.cx = dragViewStart.cx - (dx / w) * rangeX;
     view.cy = dragViewStart.cy - (dy / h) * rangeY;
     scheduleRender();
@@ -552,19 +580,31 @@ canvas.addEventListener('touchend', (e) => {
     // Double tap detection
     const now = Date.now();
     if (now - lastTap < 300) {
-      view.zoom *= 2;
+      // Zoom in by 2, keeping the tap point fixed
+      const rect = canvas.getBoundingClientRect();
+      const mx = dragStart.x - rect.left;
+      const my = dragStart.y - rect.top;
+      const pt = screenToComplex(mx, my);
+      const factor = 2;
+      view.zoom *= factor;
+      view.cx = pt.x + (view.cx - pt.x) / factor;
+      view.cy = pt.y + (view.cy - pt.y) / factor;
       updateZoomDisplay();
       scheduleRender();
+      lastTap = 0; // reset so a third tap doesn't re-trigger
+    } else {
+      lastTap = now;
     }
-    lastTap = now;
   }
 });
 
 function scheduleRender() {
-  if (!needsRender) {
-    needsRender = true;
-    requestAnimationFrame(() => renderFractal());
-  }
+  if (rafPending) return;
+  rafPending = true;
+  requestAnimationFrame(() => {
+    rafPending = false;
+    renderFractal();
+  });
 }
 
 // ===================== CONTROLS =====================
@@ -574,6 +614,7 @@ fractalType.addEventListener('change', () => {
   document.getElementById('juliaParamRow').style.display = fractalType.value === 'julia' ? 'flex' : 'none';
   document.getElementById('juliaParamIm').style.display = fractalType.value === 'julia' ? 'flex' : 'none';
   document.getElementById('juliaPresets').style.display = fractalType.value === 'julia' ? 'flex' : 'none';
+  if (juliaCursor) juliaCursor.style.display = 'none';
   scheduleRender();
 });
 
@@ -603,14 +644,25 @@ resetBtn.addEventListener('click', () => {
 });
 
 screenshotBtn.addEventListener('click', () => {
-  const link = document.createElement('a');
-  link.download = `fractal_${Date.now()}.png`;
-  link.href = canvas.toDataURL('image/png');
-  link.click();
+  try {
+    const link = document.createElement('a');
+    link.download = `fractal_${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch (err) {
+    alert('Could not save image: ' + err.message);
+  }
 });
 
 // ===================== INIT =====================
 window.addEventListener('resize', resize);
+// Re-render on DPR change (e.g. moving between monitors)
+const dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+if (dprQuery.addEventListener) {
+  dprQuery.addEventListener('change', resize);
+} else if (dprQuery.addListener) {
+  dprQuery.addListener(resize);
+}
 resize();
 scheduleRender();
 </script>
