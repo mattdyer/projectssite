@@ -156,9 +156,6 @@ function resize() {
   H = canvas.height = window.innerHeight;
   if (W > 0 && H > 0) initStars();
 }
-window.addEventListener('resize', resize);
-resize();
-
 // --- State ---
 let audioCtx, analyser, micStream, dataArray, freqData;
 let mode = 'bars';
@@ -169,6 +166,9 @@ let started = false;
 let startTime = 0;
 let particles = [];
 let stars = [];
+
+window.addEventListener('resize', resize);
+resize();
 
 // --- Stars background ---
 function initStars() {
